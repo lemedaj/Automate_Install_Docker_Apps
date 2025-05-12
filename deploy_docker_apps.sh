@@ -185,83 +185,6 @@ setup_service_directories() {
   # Create necessary files with proper permissions
   touch "$TRAEFIK_DIR/data/acme.json"
   chmod 600 "$TRAEFIK_DIR/data/acme.json"
-
-  # Create .env files for each service if they don't exist
-  if [ ! -f "$TRAEFIK_DIR/.env" ]; then
-    echo "Creating Traefik .env file..."
-    cat > "$TRAEFIK_DIR/.env" << EOL
-TRAEFIK_PORT=8080
-DOMAIN_NAME=example.com
-CF_API_EMAIL=your-email@example.com
-CF_DNS_API_TOKEN=your-cloudflare-api-token
-EOL
-  fi
-
-  if [ ! -f "$NGINX_DIR/.env" ]; then
-    echo "Creating Nginx .env file..."
-    cat > "$NGINX_DIR/.env" << EOL
-NGINX_PORT=80
-DOMAIN_NAME=example.com
-NETWORK_NAME=business-network
-EOL
-  fi
-
-  if [ ! -f "$PORTAINER_DIR/.env" ]; then
-    echo "Creating Portainer .env file..."
-    cat > "$PORTAINER_DIR/.env" << EOL
-PORTAINER_PORT=9000
-DOMAIN_NAME=example.com
-NETWORK_NAME=business-network
-EOL
-  fi
-
-  if [ ! -f "$NGINX_PROXY_DIR/.env" ]; then
-    echo "Creating Nginx Proxy Manager .env file..."
-    cat > "$NGINX_PROXY_DIR/.env" << EOL
-NPM_PORT=81
-DOMAIN_NAME=example.com
-NETWORK_NAME=business-network
-EOL
-  fi
-
-  if [ ! -f "$ODOO_DIR/.env" ]; then
-    echo "Creating Odoo .env file..."
-    cat > "$ODOO_DIR/.env" << EOL
-ODOO_VERSION=17.0
-ODOO_PORT=8069
-ODOO_DB_HOST=db
-ODOO_DB_USER=odoo
-ODOO_DB_PASSWORD=odoo_password
-POSTGRES_VERSION=16
-POSTGRES_DB=postgres
-DOMAIN_NAME=example.com
-NETWORK_NAME=business-network
-EOL
-  fi
-
-  if [ ! -f "$DOLIBARR_DIR/.env" ]; then
-    echo "Creating Dolibarr .env file..."
-    cat > "$DOLIBARR_DIR/.env" << EOL
-DOLIBARR_VERSION=17
-DOLIBARR_PORT=8080
-DOLIBARR_DB_HOST=db
-DOLIBARR_DB_NAME=dolibarr
-DOLIBARR_DB_USER=dolibarr
-DOLIBARR_DB_PASSWORD=dolibarr_password
-MYSQL_VERSION=8.0
-DOMAIN_NAME=example.com
-NETWORK_NAME=business-network
-EOL
-  fi
-
-  if [ ! -f "$CLOUDFLARE_DIR/.env" ]; then
-    echo "Creating Cloudflare .env file..."
-    cat > "$CLOUDFLARE_DIR/.env" << EOL
-TUNNEL_TOKEN=your-cloudflare-tunnel-token
-DOMAIN_NAME=example.com
-NETWORK_NAME=business-network
-EOL
-  fi
 }
 
 # Function to get domain name from user and Cloudflare email and API key
@@ -273,10 +196,23 @@ get_domain_name() {
   echo "Please enter your Cloudflare API key:"
   read -r CF_API_KEY
   
+  # Get Traefik dashboard credentials
+  echo "Please enter username for Traefik dashboard (default: admin):"
+  read -r TRAEFIK_USER
+  TRAEFIK_USER=${TRAEFIK_USER:-admin}
+  
+  echo "Please enter password for Traefik dashboard (default: admin):"
+  read -r TRAEFIK_PASSWORD
+  TRAEFIK_PASSWORD=${TRAEFIK_PASSWORD:-admin}
+  
+  # Generate htpasswd for Traefik dashboard
+  TRAEFIK_AUTH=$(docker run --rm httpd:2.4-alpine htpasswd -nbB "$TRAEFIK_USER" "$TRAEFIK_PASSWORD" | sed -e s/\\$/\\$\\$/g)
+  
   # Update Traefik .env file with credentials
   sed -i "s/DOMAIN_NAME=.*/DOMAIN_NAME=$DOMAIN_NAME/" "$TRAEFIK_DIR/.env"
   sed -i "s/CF_API_EMAIL=.*/CF_API_EMAIL=$CF_EMAIL/" "$TRAEFIK_DIR/.env"
   sed -i "s/CF_API_KEY=.*/CF_API_KEY=$CF_API_KEY/" "$TRAEFIK_DIR/.env"
+  sed -i "s/TRAEFIK_DASHBOARD_AUTH=.*/TRAEFIK_DASHBOARD_AUTH=$TRAEFIK_AUTH/" "$TRAEFIK_DIR/.env"
 }
 
 # Function to ask user which apps to install
