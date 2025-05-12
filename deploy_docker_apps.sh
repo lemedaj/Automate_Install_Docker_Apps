@@ -1,7 +1,15 @@
 #!/bin/bash
 
 # Get current directory as base directory
-BASE_DIR=$(pwd)
+if [ -n "$PWSH_EXECUTION" ]; then
+  # PowerShell environment
+  BASE_DIR=$(pwsh -Command "(Get-Location).Path")
+  DOCKER_APPS_DIR="$BASE_DIR"  # For Windows, use the current directory
+else
+  # Bash environment
+  BASE_DIR=$(pwd)
+  DOCKER_APPS_DIR="/mnt/docker-apps"
+fi
 
 # Directories
 ODOO_DIR="$BASE_DIR/odoo"
@@ -11,7 +19,6 @@ NGINX_PROXY_DIR="$BASE_DIR/nginx-proxy-manager"
 PORTAINER_DIR="$BASE_DIR/portainer"
 CLOUDFLARE_DIR="$BASE_DIR/cloudflare"
 TRAEFIK_DIR="$BASE_DIR/traefik"
-DOCKER_APPS_DIR="/mnt/docker-apps"
 
 REPO_URL="https://github.com/lemedaj/Automate_Install_Docker_Apps.git"  # Replace with your repository URL
 

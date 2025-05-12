@@ -77,11 +77,13 @@ Internet -> Cloudflare -> Traefik -> Services
 The setup process will guide you through configuring:
 
 1. **Domain Settings**:
+
    - Domain name
    - Cloudflare email
    - Cloudflare API key
 
 2. **Traefik Dashboard**:
+
    - Custom port (default: 8080)
    - Username and password
    - SSL certificate automation
