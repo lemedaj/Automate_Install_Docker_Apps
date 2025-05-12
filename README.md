@@ -2,6 +2,14 @@
 
 This script automates the deployment of multiple Docker applications behind a Traefik reverse proxy with automatic HTTPS using Cloudflare DNS. The script provides a modular and secure way to deploy various self-hosted applications with proper domain routing and SSL certificates.
 
+## Overview
+
+- 🔒 **Secure by Default**: HTTPS, authentication, and secure headers
+- 🚀 **Easy Deployment**: One-click setup for multiple applications
+- 🔄 **Auto Configuration**: Automatic service discovery and routing
+- 🌐 **Cross-Platform**: Works on both Linux and Windows
+- 🛡️ **Cloudflare Integration**: DNS and SSL automation
+
 ## Features
 
 - **Automatic Service Discovery**: Uses Traefik v2 for automatic service discovery and routing
@@ -31,15 +39,26 @@ This script automates the deployment of multiple Docker applications behind a Tr
 
 - A domain name managed by Cloudflare
 - Cloudflare API credentials
-- Linux-based operating system
-- Root or sudo privileges
+- Operating System:
+  - Linux-based system (Ubuntu, Debian, CentOS, RHEL, Fedora, Arch), or
+  - Windows with Git Bash installed
+- Docker and Docker Compose
+- Root/Administrator privileges
 
 ## Quick Start
 
+### On Linux:
+
 1. Clone the repository
-2. Run the deployment script: ./deploy_docker_apps.sh
-3. Enter your domain name and Cloudflare credentials when prompted
-4. Select which applications to install
+2. Make the script executable: `chmod +x deploy_docker_apps.sh`
+3. Run the deployment script: `./deploy_docker_apps.sh`
+
+### On Windows:
+
+1. Clone the repository
+2. Install Git for Windows if not already installed
+3. Run PowerShell as Administrator
+4. Run the deployment script: `.\deploy_docker_apps.ps1`
 
 ## Network Architecture
 
@@ -55,12 +74,22 @@ Internet -> Cloudflare -> Traefik -> Services
 
 ## Environment Configuration
 
-Each service has its own environment configuration file (.env) for easy customization:
+The setup process will guide you through configuring:
 
-- Database credentials
-- Application settings
-- Domain configuration
-- API keys and tokens
+1. **Domain Settings**:
+   - Domain name
+   - Cloudflare email
+   - Cloudflare API key
+
+2. **Traefik Dashboard**:
+   - Custom port (default: 8080)
+   - Username and password
+   - SSL certificate automation
+
+3. **Service-Specific Settings**:
+   - Database credentials
+   - Application ports
+   - Custom configurations
 
 ## Maintenance
 
@@ -75,15 +104,34 @@ The script includes functions for:
 ## Directory Structure
 
 ```
-├── deploy_docker_apps.sh    # Main deployment script
-├── cloudflare/              # Cloudflare tunnel configuration
-├── dolibarr/               # Dolibarr ERP/CRM
-├── nginx/                  # Nginx web server
-├── nginx-proxy-manager/    # Nginx Proxy Manager
-├── odoo/                   # Odoo business suite
-│   ├── custom-addons/     # Custom Odoo modules
-│   └── odoo.conf          # Odoo configuration
-├── portainer/             # Container management
-└── traefik/              # Reverse proxy configuration
-    └── data/             # Traefik static configuration
+├── deploy_docker_apps.sh     # Main deployment script
+├── deploy_docker_apps.ps1    # PowerShell wrapper for Windows
+├── cloudflare/               # Cloudflare tunnel configuration
+│   └── docker-compose-cloudflare.yml
+├── dolibarr/                # Dolibarr ERP/CRM
+│   └── docker-compose-dolibarr.yml
+├── nginx/                   # Nginx web server
+│   └── docker-compose-nginx.yml
+├── nginx-proxy-manager/     # Nginx Proxy Manager
+│   └── docker-compose-nginx-proxy.yml
+├── odoo/                    # Odoo business suite
+│   ├── docker-compose-odoo.yml
+│   ├── custom-addons/      # Custom Odoo modules
+│   └── odoo.conf           # Odoo configuration
+├── portainer/              # Container management
+│   └── docker-compose-portainer.yml
+└── traefik/               # Reverse proxy configuration
+    ├── docker-compose.yml
+    ├── .env               # Traefik environment configuration
+    └── data/
+        ├── traefik.yml    # Main Traefik configuration
+        ├── config.yml     # Dynamic configuration
+        └── acme.json      # SSL certificates storage
 ```
+
+## Configuration Files
+
+- **traefik.yml**: Main Traefik configuration (entrypoints, providers, etc.)
+- **config.yml**: Dynamic configuration (middlewares, TLS options)
+- **.env**: Environment variables for each service
+- **docker-compose.yml**: Service definitions and configurations
