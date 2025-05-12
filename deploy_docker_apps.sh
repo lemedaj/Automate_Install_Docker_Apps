@@ -186,7 +186,7 @@ setup_service_directories() {
   touch "$TRAEFIK_DIR/data/acme.json"
   chmod 600 "$TRAEFIK_DIR/data/acme.json"
 
-  # Create .env files if they don't exist
+  # Create .env files for each service if they don't exist
   if [ ! -f "$TRAEFIK_DIR/.env" ]; then
     echo "Creating Traefik .env file..."
     cat > "$TRAEFIK_DIR/.env" << EOL
@@ -197,201 +197,71 @@ CF_DNS_API_TOKEN=your-cloudflare-api-token
 EOL
   fi
 
-  # Create other service .env files similarly
   if [ ! -f "$NGINX_DIR/.env" ]; then
     echo "Creating Nginx .env file..."
     cat > "$NGINX_DIR/.env" << EOL
 NGINX_PORT=80
+DOMAIN_NAME=example.com
+NETWORK_NAME=business-network
 EOL
   fi
 
-  # ... Similarly for other services
-}
-
-# Function to generate docker-compose files for each service
-generate_docker_compose_files() {
-  # Nginx
-  cat > "$NGINX_DIR/docker-compose-nginx.yml" << 'EOL'
-version: '3'
-services:
-  nginx:
-    image: nginx:latest
-    container_name: nginx
-    restart: unless-stopped
-    networks:
-      - proxy
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.nginx.entrypoints=http"
-      - "traefik.http.routers.nginx.rule=Host(`nginx.${DOMAIN_NAME}`)"
-      - "traefik.http.routers.nginx.middlewares=nginx-https-redirect"
-      - "traefik.http.middlewares.nginx-https-redirect.redirectscheme.scheme=https"
-      - "traefik.http.routers.nginx-secure.entrypoints=https"
-      - "traefik.http.routers.nginx-secure.rule=Host(`nginx.${DOMAIN_NAME}`)"
-      - "traefik.http.routers.nginx-secure.tls=true"
-      - "traefik.http.routers.nginx-secure.tls.certresolver=cloudflare"
-      - "traefik.http.services.nginx.loadbalancer.server.port=80"
-networks:
-  proxy:
-    external: true
+  if [ ! -f "$PORTAINER_DIR/.env" ]; then
+    echo "Creating Portainer .env file..."
+    cat > "$PORTAINER_DIR/.env" << EOL
+PORTAINER_PORT=9000
+DOMAIN_NAME=example.com
+NETWORK_NAME=business-network
 EOL
+  fi
 
-  # Odoo
-  cat > "$ODOO_DIR/docker-compose-odoo.yml" << 'EOL'
-version: '3'
-services:
-  odoo:
-    image: odoo:16.0
-    container_name: odoo
-    depends_on:
-      - db
-    volumes:
-      - odoo_data:/var/lib/odoo
-      - ./odoo.conf:/etc/odoo/odoo.conf
-      - ./custom-addons:/mnt/extra-addons
-    environment:
-      - HOST=db
-      - USER=${ODOO_DB_USER}
-      - PASSWORD=${ODOO_DB_PASSWORD}
-    networks:
-      - proxy
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.odoo.entrypoints=http"
-      - "traefik.http.routers.odoo.rule=Host(`odoo.${DOMAIN_NAME}`)"
-      - "traefik.http.routers.odoo.middlewares=odoo-https-redirect"
-      - "traefik.http.middlewares.odoo-https-redirect.redirectscheme.scheme=https"
-      - "traefik.http.routers.odoo-secure.entrypoints=https"
-      - "traefik.http.routers.odoo-secure.rule=Host(`odoo.${DOMAIN_NAME}`)"
-      - "traefik.http.routers.odoo-secure.tls=true"
-      - "traefik.http.routers.odoo-secure.tls.certresolver=cloudflare"
-      - "traefik.http.services.odoo.loadbalancer.server.port=8069"
-  db:
-    image: postgres:13
-    container_name: odoo-db
-    environment:
-      - POSTGRES_DB=postgres
-      - POSTGRES_USER=${ODOO_DB_USER}
-      - POSTGRES_PASSWORD=${ODOO_DB_PASSWORD}
-    volumes:
-      - odoo_db:/var/lib/postgresql/data
-    networks:
-      - proxy
-volumes:
-  odoo_data:
-  odoo_db:
-networks:
-  proxy:
-    external: true
+  if [ ! -f "$NGINX_PROXY_DIR/.env" ]; then
+    echo "Creating Nginx Proxy Manager .env file..."
+    cat > "$NGINX_PROXY_DIR/.env" << EOL
+NPM_PORT=81
+DOMAIN_NAME=example.com
+NETWORK_NAME=business-network
 EOL
+  fi
 
-  # Dolibarr
-  cat > "$DOLIBARR_DIR/docker-compose-dolibarr.yml" << 'EOL'
-version: '3'
-services:
-  dolibarr:
-    image: tuxgasy/dolibarr:latest
-    container_name: dolibarr
-    environment:
-      - DOLI_DB_HOST=dolibarr-db
-      - DOLI_DB_USER=${DOLI_DB_USER}
-      - DOLI_DB_PASSWORD=${DOLI_DB_PASSWORD}
-      - DOLI_DB_NAME=${DOLI_DB_NAME}
-      - DOLI_URL_ROOT=https://dolibarr.${DOMAIN_NAME}
-    volumes:
-      - dolibarr_html:/var/www/html
-      - dolibarr_docs:/var/www/documents
-    networks:
-      - proxy
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.dolibarr.entrypoints=http"
-      - "traefik.http.routers.dolibarr.rule=Host(`dolibarr.${DOMAIN_NAME}`)"
-      - "traefik.http.routers.dolibarr.middlewares=dolibarr-https-redirect"
-      - "traefik.http.middlewares.dolibarr-https-redirect.redirectscheme.scheme=https"
-      - "traefik.http.routers.dolibarr-secure.entrypoints=https"
-      - "traefik.http.routers.dolibarr-secure.rule=Host(`dolibarr.${DOMAIN_NAME}`)"
-      - "traefik.http.routers.dolibarr-secure.tls=true"
-      - "traefik.http.routers.dolibarr-secure.tls.certresolver=cloudflare"
-      - "traefik.http.services.dolibarr.loadbalancer.server.port=80"
-    depends_on:
-      - dolibarr-db
-  dolibarr-db:
-    image: mariadb:latest
-    container_name: dolibarr-db
-    environment:
-      - MYSQL_ROOT_PASSWORD=${DOLI_DB_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${DOLI_DB_NAME}
-      - MYSQL_USER=${DOLI_DB_USER}
-      - MYSQL_PASSWORD=${DOLI_DB_PASSWORD}
-    volumes:
-      - dolibarr_db:/var/lib/mysql
-    networks:
-      - proxy
-volumes:
-  dolibarr_html:
-  dolibarr_docs:
-  dolibarr_db:
-networks:
-  proxy:
-    external: true
+  if [ ! -f "$ODOO_DIR/.env" ]; then
+    echo "Creating Odoo .env file..."
+    cat > "$ODOO_DIR/.env" << EOL
+ODOO_VERSION=17.0
+ODOO_PORT=8069
+ODOO_DB_HOST=db
+ODOO_DB_USER=odoo
+ODOO_DB_PASSWORD=odoo_password
+POSTGRES_VERSION=16
+POSTGRES_DB=postgres
+DOMAIN_NAME=example.com
+NETWORK_NAME=business-network
 EOL
+  fi
 
-  # Nginx Proxy Manager
-  cat > "$NGINX_PROXY_DIR/docker-compose-nginx-proxy.yml" << 'EOL'
-version: '3'
-services:
-  app:
-    image: jc21/nginx-proxy-manager:latest
-    container_name: nginx-proxy-manager
-    restart: unless-stopped
-    environment:
-      DB_MYSQL_HOST: "npm-db"
-      DB_MYSQL_PORT: 3306
-      DB_MYSQL_USER: ${NPM_DB_USER}
-      DB_MYSQL_PASSWORD: ${NPM_DB_PASSWORD}
-      DB_MYSQL_NAME: ${NPM_DB_NAME}
-    volumes:
-      - npm_data:/data
-      - npm_letsencrypt:/etc/letsencrypt
-    networks:
-      - proxy
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.npm.entrypoints=http"
-      - "traefik.http.routers.npm.rule=Host(`npm.${DOMAIN_NAME}`)"
-      - "traefik.http.routers.npm.middlewares=npm-https-redirect"
-      - "traefik.http.middlewares.npm-https-redirect.redirectscheme.scheme=https"
-      - "traefik.http.routers.npm-secure.entrypoints=https"
-      - "traefik.http.routers.npm-secure.rule=Host(`npm.${DOMAIN_NAME}`)"
-      - "traefik.http.routers.npm-secure.tls=true"
-      - "traefik.http.routers.npm-secure.tls.certresolver=cloudflare"
-      - "traefik.http.services.npm.loadbalancer.server.port=81"
-    depends_on:
-      - npm-db
-  npm-db:
-    image: jc21/mariadb-aria:latest
-    container_name: npm-db
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${NPM_DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${NPM_DB_NAME}
-      MYSQL_USER: ${NPM_DB_USER}
-      MYSQL_PASSWORD: ${NPM_DB_PASSWORD}
-    volumes:
-      - npm_mysql:/var/lib/mysql
-    networks:
-      - proxy
-volumes:
-  npm_data:
-  npm_letsencrypt:
-  npm_mysql:
-networks:
-  proxy:
-    external: true
+  if [ ! -f "$DOLIBARR_DIR/.env" ]; then
+    echo "Creating Dolibarr .env file..."
+    cat > "$DOLIBARR_DIR/.env" << EOL
+DOLIBARR_VERSION=17
+DOLIBARR_PORT=8080
+DOLIBARR_DB_HOST=db
+DOLIBARR_DB_NAME=dolibarr
+DOLIBARR_DB_USER=dolibarr
+DOLIBARR_DB_PASSWORD=dolibarr_password
+MYSQL_VERSION=8.0
+DOMAIN_NAME=example.com
+NETWORK_NAME=business-network
 EOL
+  fi
+
+  if [ ! -f "$CLOUDFLARE_DIR/.env" ]; then
+    echo "Creating Cloudflare .env file..."
+    cat > "$CLOUDFLARE_DIR/.env" << EOL
+TUNNEL_TOKEN=your-cloudflare-tunnel-token
+DOMAIN_NAME=example.com
+NETWORK_NAME=business-network
+EOL
+  fi
 }
 
 # Function to get domain name from user and Cloudflare email and API key
@@ -412,13 +282,13 @@ get_domain_name() {
 # Function to ask user which apps to install
 ask_user() {
   echo "Which applications would you like to install?"
-  echo "1) Nginx"
-  echo "2) Portainer"
-  echo "3) Nginx Proxy Manager"
-  echo "4) Odoo"
-  echo "5) Dolibarr"
-  echo "6) Cloudflare Tunnel"
-  echo "7) Traefik"
+  echo "1) Traefik"
+  echo "2) Nginx"
+  echo "3) Portainer"
+  echo "4) Nginx Proxy Manager"
+  echo "5) Odoo"
+  echo "6) Dolibarr"
+  echo "7) Cloudflare Tunnel"
   echo "8) Install all applications"
   echo "Enter the number of the applications separated by spaces (e.g., 1 2 4) or enter 8 for all: "
   read -r APPS
@@ -430,13 +300,13 @@ ask_user() {
 
   for APP in $APPS; do
     case $APP in
-      1) install_nginx ;;
-      2) install_portainer ;;
-      3) install_nginx_proxy_manager ;;
-      4) install_odoo ;;
-      5) install_dolibarr ;;
-      6) install_cloudflare ;;
-      7) install_traefik ;;
+      1) install_traefik ;;
+      2) install_nginx ;;
+      3) install_portainer ;;
+      4) install_nginx_proxy_manager ;;
+      5) install_odoo ;;
+      6) install_dolibarr ;;
+      7) install_cloudflare ;;
       *) echo "Invalid option: $APP" ;;
     esac
   done
@@ -482,13 +352,13 @@ display_urls() {
   
   for APP in $APPS; do
     case $APP in
-      1) echo "Nginx: https://nginx.${DOMAIN_NAME}" ;;
-      2) echo "Portainer: https://portainer.${DOMAIN_NAME}" ;;
-      3) echo "Nginx Proxy Manager: https://npm.${DOMAIN_NAME}" ;;
-      4) echo "Odoo: https://odoo.${DOMAIN_NAME}" ;;
-      5) echo "Dolibarr: https://dolibarr.${DOMAIN_NAME}" ;;
-      6) echo "Cloudflare Tunnel: https://tunnel.${DOMAIN_NAME}" ;;
-      7) echo "Traefik Dashboard: https://traefik.${DOMAIN_NAME}" ;;
+      1) echo "Traefik Dashboard: https://traefik.${DOMAIN_NAME}" ;;
+      2) echo "Nginx: https://nginx.${DOMAIN_NAME}" ;;
+      3) echo "Portainer: https://portainer.${DOMAIN_NAME}" ;;
+      4) echo "Nginx Proxy Manager: https://npm.${DOMAIN_NAME}" ;;
+      5) echo "Odoo: https://odoo.${DOMAIN_NAME}" ;;
+      6) echo "Dolibarr: https://dolibarr.${DOMAIN_NAME}" ;;
+      7) echo "Cloudflare Tunnel: https://tunnel.${DOMAIN_NAME}" ;;
     esac
   done
 }
@@ -511,9 +381,6 @@ main() {
 
   # Setup service directories and configurations
   setup_service_directories
-
-  # Generate docker-compose files
-  generate_docker_compose_files
 
   # Get domain name and Cloudflare credentials from user
   get_domain_name
