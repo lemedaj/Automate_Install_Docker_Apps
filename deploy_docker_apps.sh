@@ -13,7 +13,7 @@ CLOUDFLARE_DIR="$BASE_DIR/cloudflare"
 TRAEFIK_DIR="$BASE_DIR/traefik"
 DOCKER_APPS_DIR="/mnt/docker-apps"
 
-REPO_URL="https://github.com/your-repo/docker-apps.git"  # Replace with your repository URL
+REPO_URL="https://github.com/lemedaj/Automate_Install_Docker_Apps.git"  # Replace with your repository URL
 
 # Function to check if a command exists
 command_exists() {
@@ -191,10 +191,16 @@ setup_service_directories() {
 get_domain_name() {
   echo "Please enter your domain name (e.g., example.com):"
   read -r DOMAIN_NAME
+
   echo "Please enter your Cloudflare email:"
   read -r CF_EMAIL
+
   echo "Please enter your Cloudflare API key:"
   read -r CF_API_KEY
+
+  echo "Please enter Traefik dashboard port (default: 8080):"
+  read -r TRAEFIK_PORT
+  TRAEFIK_PORT=${TRAEFIK_PORT:-8080}
   
   # Get Traefik dashboard credentials
   echo "Please enter username for Traefik dashboard (default: admin):"
@@ -208,11 +214,15 @@ get_domain_name() {
   # Generate htpasswd for Traefik dashboard
   TRAEFIK_AUTH=$(docker run --rm httpd:2.4-alpine htpasswd -nbB "$TRAEFIK_USER" "$TRAEFIK_PASSWORD" | sed -e s/\\$/\\$\\$/g)
   
-  # Update Traefik .env file with credentials
-  sed -i "s/DOMAIN_NAME=.*/DOMAIN_NAME=$DOMAIN_NAME/" "$TRAEFIK_DIR/.env"
-  sed -i "s/CF_API_EMAIL=.*/CF_API_EMAIL=$CF_EMAIL/" "$TRAEFIK_DIR/.env"
-  sed -i "s/CF_API_KEY=.*/CF_API_KEY=$CF_API_KEY/" "$TRAEFIK_DIR/.env"
-  sed -i "s/TRAEFIK_DASHBOARD_AUTH=.*/TRAEFIK_DASHBOARD_AUTH=$TRAEFIK_AUTH/" "$TRAEFIK_DIR/.env"
+  # Update Traefik .env file with all settings
+  cat > "$TRAEFIK_DIR/.env" << EOL
+TRAEFIK_VERSION=latest
+TRAEFIK_PORT=$TRAEFIK_PORT
+DOMAIN_NAME=$DOMAIN_NAME
+CF_API_EMAIL=$CF_EMAIL
+CF_API_KEY=$CF_API_KEY
+TRAEFIK_DASHBOARD_AUTH="$TRAEFIK_AUTH"  # Generated credentials
+EOL
 }
 
 # Function to ask user which apps to install
