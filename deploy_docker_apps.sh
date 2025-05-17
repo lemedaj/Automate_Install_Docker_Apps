@@ -167,19 +167,27 @@ install_cloudflare() {
 install_traefik() {
   if ! docker container inspect traefik >/dev/null 2>&1; then
     echo "Installing Traefik..."
-    docker-compose -f $TRAEFIK_DIR/docker-compose.yml up -d
+    docker-compose -f $TRAEFIK_DIR/docker-compose-traefik.yml up -d
   else
     echo "Traefik is already running."
   fi
 }
 
-# Create Traefik network
-create_traefik_network() {
-  if ! docker network ls | grep -q traefik_proxy; then
-    echo "Creating Traefik network..."
-    docker network create traefik_proxy
+# Function to get network configuration
+get_network_config() {
+  echo "Please enter the network name to use across all services (default: proxy):"
+  read -r NETWORK_NAME
+  NETWORK_NAME=${NETWORK_NAME:-proxy}
+  export NETWORK_NAME
+}
+
+# Create Docker network with user-provided name
+create_docker_network() {
+  if ! docker network ls | grep -q "$NETWORK_NAME"; then
+    echo "Creating Docker network: $NETWORK_NAME..."
+    docker network create "$NETWORK_NAME"
   else
-    echo "Traefik network already exists."
+    echo "Network $NETWORK_NAME already exists."
   fi
 }
 
@@ -299,6 +307,10 @@ create_docker_apps_dir() {
 
 # Function to read the environment variable values
 load_env_vars() {
+  # Export network name for all services
+  export NETWORK_NAME=${NETWORK_NAME:-proxy}
+
+  # Load all service environment files
   set -o allexport
   source $ODOO_DIR/.env
   source $DOLIBARR_DIR/.env
@@ -308,6 +320,20 @@ load_env_vars() {
   source $CLOUDFLARE_DIR/.env
   source $TRAEFIK_DIR/.env
   set +o allexport
+
+  # Update network name in .env files if they exist
+  for env_file in "$ODOO_DIR/.env" "$DOLIBARR_DIR/.env" "$NGINX_DIR/.env" \
+                  "$PORTAINER_DIR/.env" "$NGINX_PROXY_DIR/.env" \
+                  "$CLOUDFLARE_DIR/.env" "$TRAEFIK_DIR/.env"; do
+    if [ -f "$env_file" ]; then
+      # Add or update NETWORK_NAME in .env files
+      if grep -q "^NETWORK_NAME=" "$env_file"; then
+        sed -i "s/^NETWORK_NAME=.*/NETWORK_NAME=$NETWORK_NAME/" "$env_file"
+      else
+        echo "NETWORK_NAME=$NETWORK_NAME" >> "$env_file"
+      fi
+    fi
+  done
 }
 
 # Function to display URLs and ports for installed apps
@@ -340,8 +366,11 @@ main() {
   # Create Docker Apps directory
   create_docker_apps_dir
 
-  # Create Traefik network
-  create_traefik_network
+  # Get network configuration from user
+  get_network_config
+
+  # Create Docker network
+  create_docker_network
 
   # Setup service directories and configurations
   setup_service_directories

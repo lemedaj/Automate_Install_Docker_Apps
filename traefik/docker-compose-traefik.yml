@@ -6,9 +6,9 @@ services:
     container_name: traefik
     restart: unless-stopped
     security_opt:
-      - no-new-privileges:true
+      - no-new-privileges:true    
     networks:
-      - proxy
+      - ${NETWORK_NAME}
     ports:
       - 80:80
       - 443:443
@@ -48,5 +48,5 @@ secrets:
     file: ./cf_api_token.txt
 
 networks:
-  proxy:
+  ${NETWORK_NAME}:
     external: true
