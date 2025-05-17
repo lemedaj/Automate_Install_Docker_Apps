@@ -128,9 +128,14 @@ install_nginx_proxy_manager() {
   fi
 }
 
+# Source Odoo configuration function
+source "$ODOO_DIR/odoo_config.sh"
+
 # Install Odoo
 install_odoo() {
   if ! docker container inspect odoo >/dev/null 2>&1; then
+    echo "Setting up Odoo configuration..."
+    get_odoo_config "$ODOO_DIR"
     echo "Installing Odoo..."
     docker-compose -f $ODOO_DIR/docker-compose-odoo.yml up -d
   else
@@ -192,6 +197,9 @@ setup_service_directories() {
   # Create necessary files with proper permissions
   touch "$TRAEFIK_DIR/data/acme.json"
   chmod 600 "$TRAEFIK_DIR/data/acme.json"
+  
+  # Make Odoo configuration script executable
+  chmod +x "$ODOO_DIR/odoo_config.sh"
 }
 
 # Function to get domain name from user and Cloudflare email and API key
@@ -257,7 +265,10 @@ ask_user() {
       2) install_nginx ;;
       3) install_portainer ;;
       4) install_nginx_proxy_manager ;;
-      5) install_odoo ;;
+      5) 
+        get_odoo_config
+        install_odoo 
+        ;;
       6) install_dolibarr ;;
       7) install_cloudflare ;;
       *) echo "Invalid option: $APP" ;;

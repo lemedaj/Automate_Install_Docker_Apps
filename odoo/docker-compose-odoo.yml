@@ -1,20 +1,22 @@
 version: '3'
 services:
-
   odoo:
     image: odoo:${ODOO_VERSION}
     container_name: odoo
     depends_on:
-      - db    volumes:
+      - db
+    volumes:
       - odoo_data:/var/lib/odoo
       - ./odoo.conf:/etc/odoo/odoo.conf
-      - ./custom-addons:/mnt/extra-addons
+      - ./custom-addons:/mnt/extra-addons    
     environment:
       - HOST=${ODOO_DB_HOST}
-      - USER=${ODOO_DB_USER}
-      - PASSWORD=${ODOO_DB_PASSWORD}
+      - USER=${POSTGRES_USER}
+      - PASSWORD=${POSTGRES_PASSWORD}    
+    # ports:
+    #   - "${ODOO_PORT}:8069"
     networks:
-      - proxy
+      - ${NETWORK_NAME}    
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.odoo.entrypoints=http"
@@ -25,19 +27,21 @@ services:
       - "traefik.http.routers.odoo-secure.rule=Host(`odoo.${DOMAIN_NAME}`)"
       - "traefik.http.routers.odoo-secure.tls=true"
       - "traefik.http.routers.odoo-secure.tls.certresolver=cloudflare"
-      - "traefik.http.services.odoo.loadbalancer.server.port=8069"
-
+      - "traefik.http.services.odoo.loadbalancer.server.port=${ODOO_PORT}"
   db:
     image: postgres:${POSTGRES_VERSION}
     container_name: postgres
-    environment: POSTGRES_DB=${POSTGRES_DB} POSTGRES_USER=${ODOO_DB_USER} POSTGRES_PASSWORD=${ODOO_DB_PASSWORD}
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - ${NETWORK_NAME}
 
 networks:
-  proxy:
+  ${NETWORK_NAME}:
     external: true
 
 volumes:
