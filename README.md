@@ -1,139 +1,151 @@
-# Docker Applications Deployment Script
+# Docker Apps Automated Installation
 
-This script automates the deployment of multiple Docker applications behind a Traefik reverse proxy with automatic HTTPS using Cloudflare DNS. The script provides a modular and secure way to deploy various self-hosted applications with proper domain routing and SSL certificates.
-
-## Overview
-
-- 🔒 **Secure by Default**: HTTPS, authentication, and secure headers
-- 🚀 **Easy Deployment**: One-click setup for multiple applications
-- 🔄 **Auto Configuration**: Automatic service discovery and routing
-- 🌐 **Cross-Platform**: Works on both Linux and Windows
-- 🛡️ **Cloudflare Integration**: DNS and SSL automation
+This repository provides an automated setup for various Docker applications using docker-compose, with Traefik as the reverse proxy and automatic SSL certificate management.
 
 ## Features
 
-- **Automatic Service Discovery**: Uses Traefik v2 for automatic service discovery and routing
-- **SSL/TLS Automation**: Automated HTTPS certificates via Cloudflare DNS challenge
-- **Subdomain Routing**: Each service is accessible via its own subdomain
-- **Multi-Platform Support**: Works on various Linux distributions (Ubuntu, Debian, CentOS, RHEL, Fedora, Arch)
-- **Docker & Docker Compose**: Automatic installation and configuration
-- **Service Integration**: Multiple pre-configured applications:
-  - Traefik (Reverse Proxy)
-  - Nginx (Web Server)
-  - Portainer (Container Management)
-  - Nginx Proxy Manager (Web Proxy)
-  - Odoo (Business Management)
-  - Dolibarr (ERP/CRM)
-  - Cloudflare Tunnel (Secure Access)
+- Automated installation of multiple applications
+- Traefik reverse proxy with automatic SSL
+- Cloudflare DNS integration
+- Modular configuration
+- Secure by default
+- Multi-platform support (Linux/Windows)
 
-## Security Features
+## Applications Included
 
-- Automatic HTTPS redirection
-- Secure headers configuration
-- Network isolation using Docker networks
-- Basic authentication for admin interfaces
-- No exposed ports except 80 and 443
-- Cloudflare DNS integration for added security
+- **Odoo**: Open source ERP and CRM
+- **Dolibarr**: Business/Enterprise management software
+- **Portainer**: Docker management UI
+- **Nginx**: Web server
+- **Nginx Proxy Manager**: Visual proxy management
+- **Traefik**: Modern reverse proxy
+- **Cloudflare**: DNS and tunnel integration
 
 ## Prerequisites
 
-- A domain name managed by Cloudflare
-- Cloudflare API credentials
-- Operating System:
-  - Linux-based system (Ubuntu, Debian, CentOS, RHEL, Fedora, Arch), or
-  - Windows with Git Bash installed
-- Docker and Docker Compose
-- Root/Administrator privileges
-
-## Quick Start
-
-### On Linux:
-
-1. Clone the repository
-2. Make the script executable: `chmod +x deploy_docker_apps.sh`
-3. Run the deployment script: `./deploy_docker_apps.sh`
-
-### On Windows:
-
-1. Clone the repository
-2. Install Git for Windows if not already installed
-3. Run PowerShell as Administrator
-4. Run the deployment script: `.\deploy_docker_apps.ps1`
-
-## Network Architecture
-
-```
-Internet -> Cloudflare -> Traefik -> Services
-                              ├─ nginx.domain.com
-                              ├─ portainer.domain.com
-                              ├─ npm.domain.com
-                              ├─ odoo.domain.com
-                              ├─ dolibarr.domain.com
-                              └─ traefik.domain.com
-```
-
-## Environment Configuration
-
-The setup process will guide you through configuring:
-
-1. **Domain Settings**:
-
-   - Domain name
-   - Cloudflare email
-   - Cloudflare API key
-
-2. **Traefik Dashboard**:
-
-   - Custom port (default: 8080)
-   - Username and password
-   - SSL certificate automation
-
-3. **Service-Specific Settings**:
-   - Database credentials
-   - Application ports
-   - Custom configurations
-
-## Maintenance
-
-The script includes functions for:
-
-- Updating existing installations
-- Adding new services
-- Managing Docker networks
-- Environment variable management
-- Service status monitoring
+- Docker
+- Docker Compose
+- Git
+- Domain name with Cloudflare DNS
+- Bash/PowerShell
 
 ## Directory Structure
 
 ```
-├── deploy_docker_apps.sh     # Main deployment script
-├── deploy_docker_apps.ps1    # PowerShell wrapper for Windows
-├── cloudflare/               # Cloudflare tunnel configuration
-│   └── docker-compose-cloudflare.yml
-├── dolibarr/                # Dolibarr ERP/CRM
-│   └── docker-compose-dolibarr.yml
-├── nginx/                   # Nginx web server
-│   └── docker-compose-nginx.yml
-├── nginx-proxy-manager/     # Nginx Proxy Manager
-│   └── docker-compose-nginx-proxy.yml
-├── odoo/                    # Odoo business suite
+.
+├── deploy_docker_apps.sh       # Main deployment script
+├── cloudflare/                 # Cloudflare tunnel configuration
+├── dolibarr/                  # Dolibarr ERP configuration
+├── nginx/                     # Nginx web server configuration
+├── nginx-proxy-manager/       # NPM configuration
+├── odoo/                     # Odoo ERP configuration
+│   ├── custom-addons/       # Custom Odoo modules
 │   ├── docker-compose-odoo.yml
-│   ├── custom-addons/      # Custom Odoo modules
-│   └── odoo.conf           # Odoo configuration
-├── portainer/              # Container management
-│   └── docker-compose-portainer.yml
-└── traefik/               # Reverse proxy configuration
-    ├── docker-compose.yml
-    ├── .env               # Traefik environment configuration
-    └── data/
-        ├── traefik.yml    # Main Traefik configuration
-        ├── config.yml     # Dynamic configuration
-        └── acme.json      # SSL certificates storage
+│   ├── odoo_config.sh       # Odoo configuration script
+│   └── odoo.conf           # Odoo server configuration
+├── portainer/               # Portainer configuration
+└── traefik/                # Traefik reverse proxy configuration
+    └── data/              # Traefik data directory
+        ├── acme.json     # SSL certificates
+        ├── config.yml    # Dynamic configuration
+        └── traefik.yml   # Static configuration
 ```
 
-## Configuration Files
+## Installation
 
-- **traefik.yml**: Main Traefik configuration (entrypoints, providers, etc.)
-- **config.yml**: Dynamic configuration (middlewares, TLS options)
-- **.env**: Environment variables for each service
-- **docker-compose.yml**: Service definitions and configurations
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/lemedaj/Automate_Install_Docker_Apps.git
+   cd Automate_Install_Docker_Apps
+   ```
+
+2. Make the script executable:
+   ```bash
+   chmod +x deploy_docker_apps.sh
+   ```
+
+3. Run the deployment script:
+   ```bash
+   ./deploy_docker_apps.sh
+   ```
+
+4. Follow the interactive prompts to configure your services.
+
+## Configuration
+
+### Odoo Configuration
+- Uses PostgreSQL database
+- Customizable through odoo.conf
+- Supports custom addons
+- Automatic database backup
+- Comprehensive logging options
+
+### Traefik Configuration
+- Automatic SSL certificate management
+- Cloudflare DNS integration
+- Dashboard access
+- Security middleware
+
+### Network Configuration
+- Uses traefik_proxy network
+- Secure internal communication
+- External access through Traefik only
+
+## Environment Variables
+
+Each service has its own .env file with the following structure:
+
+### Odoo Environment
+```properties
+ODOO_VERSION=latest
+ODOO_PORT=8069
+POSTGRES_VERSION=latest
+POSTGRES_DB=postgres
+POSTGRES_USER=odoo
+POSTGRES_PASSWORD=secure_password
+DOMAIN_NAME=your.domain.com
+```
+
+## Security
+
+- Automatic SSL certificate management
+- Secure password handling
+- No default credentials
+- Restricted network access
+- Regular security updates
+
+## Maintenance
+
+### Backup
+- Database backups configured for each service
+- Volume backup support
+- Automated backup scheduling
+
+### Updates
+- Update containers: `docker-compose pull`
+- Rebuild services: `docker-compose up -d --build`
+- Check logs: `docker-compose logs -f`
+
+## Troubleshooting
+
+Common issues and solutions:
+1. Network conflicts: Check port availability
+2. Permission issues: Verify file permissions
+3. SSL errors: Check Cloudflare configuration
+4. Database connection: Verify credentials
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Support
+
+For support, please open an issue in the GitHub repository.
