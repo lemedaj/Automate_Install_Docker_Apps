@@ -1,5 +1,48 @@
 #!/bin/bash
 
+# Function to check and create Docker resources
+check_docker_resources() {
+  if [ -n "$PWSH_EXECUTION" ]; then
+    # PowerShell commands for Windows
+    if ! docker network ls | Select-String -Pattern "proxy" -Quiet; then
+      Write-Host "Creating proxy network..."
+      docker network create proxy
+    else
+      Write-Host "Network proxy already exists."
+    fi
+
+    # Check volumes
+    $volumes = @("odoo_data", "postgres_data")
+    foreach ($volume in $volumes) {
+      if ! docker volume ls | Select-String -Pattern "$volume" -Quiet; then
+        Write-Host "Creating volume $volume..."
+        docker volume create "$volume"
+      else
+        Write-Host "Volume $volume already exists."
+      fi
+    }
+  else
+    # Bash commands for Linux/Unix
+    # Check if network exists
+    if ! docker network ls | grep -q "proxy"; then
+      echo "Creating proxy network..."
+      docker network create proxy
+    else
+      echo "Network proxy already exists."
+    fi
+
+    # Check if volumes exist
+    for volume in "odoo_data" "postgres_data"; do
+      if ! docker volume ls | grep -q "$volume"; then
+        echo "Creating volume $volume..."
+        docker volume create "$volume"
+      else
+        echo "Volume $volume already exists."
+      fi
+    done
+  fi
+}
+
 # Default values for Odoo configuration
 ODOO_DEFAULTS=(
   ["ODOO_VERSION"]="latest"      # Default Odoo version
@@ -9,7 +52,6 @@ ODOO_DEFAULTS=(
   ["POSTGRES_DB"]="postgres"     # Default database name
   ["POSTGRES_USER"]="odoo"      # Default database user
   ["POSTGRES_PASSWORD"]="odoo"       # Must be set by user
-  ["NETWORK_NAME"]="proxy"       # Default network name
   ["DOMAIN_NAME"]="example.com"            # Must be set by user
 )
 
@@ -22,6 +64,9 @@ get_odoo_config() {
     echo "Error: ODOO_DIR path is required"
     return 1
   fi
+
+  # Check and create required Docker resources
+  check_docker_resources
 
   # Odoo Configuration
   echo "Please enter Odoo version (default: ${ODOO_DEFAULTS[ODOO_VERSION]}):"
@@ -57,10 +102,6 @@ get_odoo_config() {
     read -r POSTGRES_PASSWORD
   done
 
-  echo "Please enter network name (default: ${ODOO_DEFAULTS[NETWORK_NAME]}):"
-  read -r NETWORK_NAME
-  NETWORK_NAME=${NETWORK_NAME:-${ODOO_DEFAULTS[NETWORK_NAME]}}
-
   echo "Please enter domain name (required, e.g., example.com):"
   read -r DOMAIN_NAME
   while [ -z "$DOMAIN_NAME" ]; do
@@ -84,8 +125,7 @@ POSTGRES_DB=$POSTGRES_DB
 POSTGRES_USER=$POSTGRES_USER
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 
-# Network Configuration
-NETWORK_NAME=$NETWORK_NAME
+# Domain Configuration
 DOMAIN_NAME=$DOMAIN_NAME
 EOL
 
