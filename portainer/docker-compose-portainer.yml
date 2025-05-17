@@ -3,12 +3,11 @@ services:
   portainer:    
     image: portainer/portainer-ce:${PORTAINER_VERSION:-latest}
     container_name: portainer
-    restart: always
-    volumes:
+    restart: always    volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer_data:/data
     networks:
-      - proxy
+      - ${NETWORK_NAME:-proxy}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.portainer.entrypoints=http"
@@ -26,5 +25,5 @@ volumes:
 
 
 networks:
-  proxy:
+  ${NETWORK_NAME:-proxy}:
     external: true

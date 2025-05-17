@@ -12,11 +12,10 @@ services:
     environment:
       - HOST=${ODOO_DB_HOST}
       - USER=${POSTGRES_USER}
-      - PASSWORD=${POSTGRES_PASSWORD}    
-    # ports:
+      - PASSWORD=${POSTGRES_PASSWORD}      # ports:
     #   - "${ODOO_PORT}:8069"    
     networks:
-      - proxy
+      - ${NETWORK_NAME:-proxy}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.odoo.entrypoints=http"
@@ -34,14 +33,13 @@ services:
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}    
-    volumes:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}      volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - proxy
+      - ${NETWORK_NAME:-proxy}
 
 networks:
-  proxy:
+  ${NETWORK_NAME:-proxy}:
     external: true
 
 volumes:
