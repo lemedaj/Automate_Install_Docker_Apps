@@ -7,6 +7,7 @@ This repository provides an automated setup for various Docker applications usin
 - Automated installation of multiple applications
 - Traefik reverse proxy with automatic SSL
 - Cloudflare DNS integration
+- Configurable shared network infrastructure
 - Modular configuration
 - Secure by default
 - Multi-platform support (Linux/Windows)
@@ -69,7 +70,10 @@ This repository provides an automated setup for various Docker applications usin
    ./deploy_docker_apps.sh
    ```
 
-4. Follow the interactive prompts to configure your services.
+4. Follow the interactive prompts to:
+   - Configure the shared Docker network name
+   - Set up your domain and credentials
+   - Choose which services to install
 
 ## Configuration
 
@@ -87,7 +91,8 @@ This repository provides an automated setup for various Docker applications usin
 - Security middleware
 
 ### Network Configuration
-- Uses traefik_proxy network
+- Configurable shared Docker network (default: proxy)
+- Consistent network naming across all services
 - Secure internal communication
 - External access through Traefik only
 
@@ -95,7 +100,16 @@ This repository provides an automated setup for various Docker applications usin
 
 Each service has its own .env file with the following structure:
 
-### Odoo Environment
+### Environment Variables Structure
+Each service has its own `.env` file that includes service-specific settings and shared configuration.
+
+#### Shared Configuration
+```properties
+NETWORK_NAME=proxy              # Shared Docker network name
+DOMAIN_NAME=your.domain.com     # Base domain for all services
+```
+
+#### Service-Specific Configuration (Example: Odoo)
 ```properties
 ODOO_VERSION=latest
 ODOO_PORT=8069
@@ -103,7 +117,6 @@ POSTGRES_VERSION=latest
 POSTGRES_DB=postgres
 POSTGRES_USER=odoo
 POSTGRES_PASSWORD=secure_password
-DOMAIN_NAME=your.domain.com
 ```
 
 ## Security
