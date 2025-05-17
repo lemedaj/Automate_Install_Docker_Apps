@@ -4,11 +4,11 @@
 check_docker_resources() {
   if [ -n "$PWSH_EXECUTION" ]; then
     # PowerShell commands for Windows
-    if ! docker network ls | Select-String -Pattern "${NETWORK_NAME:-proxy}" -Quiet; then
-      Write-Host "Creating ${NETWORK_NAME:-proxy} network..."
-      docker network create ${NETWORK_NAME:-proxy}
+    if ! docker network ls | Select-String -Pattern "${NETWORK_NAME}" -Quiet; then
+      Write-Host "Creating ${NETWORK_NAME} network..."
+      docker network create ${NETWORK_NAME}
     else
-      Write-Host "Network ${NETWORK_NAME:-proxy} already exists."
+      Write-Host "Network ${NETWORK_NAME} already exists."
     fi
 
     # Check volumes
@@ -24,11 +24,11 @@ check_docker_resources() {
   else
     # Bash commands for Linux/Unix
     # Check if network exists
-    if ! docker network ls | grep -q "${NETWORK_NAME:-proxy}"; then
-      echo "Creating ${NETWORK_NAME:-proxy} network..."
-      docker network create ${NETWORK_NAME:-proxy}
+    if ! docker network ls | grep -q "${NETWORK_NAME}"; then
+      echo "Creating ${NETWORK_NAME} network..."
+      docker network create ${NETWORK_NAME}
     else
-      echo "Network ${NETWORK_NAME:-proxy} already exists."
+      echo "Network ${NETWORK_NAME} already exists."
     fi
 
     # Check if volumes exist
@@ -126,7 +126,7 @@ POSTGRES_USER=$POSTGRES_USER
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 
 # Network and Domain Configuration
-NETWORK_NAME=${NETWORK_NAME:-proxy}
+NETWORK_NAME=$NETWORK_NAME
 DOMAIN_NAME=$DOMAIN_NAME
 EOL
 
