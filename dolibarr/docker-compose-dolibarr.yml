@@ -1,0 +1,54 @@
+version: '3'
+services:
+  dolibarr:
+    image: tuxgasy/dolibarr:${DOLIBARR_VERSION:-latest}
+    container_name: dolibarr
+    restart: unless-stopped
+    environment:
+      DOLI_DB_HOST: ${DOLI_DB_HOST:-mariadb}
+      DOLI_DB_USER: ${DOLI_DB_USER:-dolibarr}
+      DOLI_DB_PASSWORD: ${DOLI_DB_PASSWORD:-dolibarr}
+      DOLI_DB_NAME: ${DOLI_DB_NAME:-dolibarr}
+      DOLI_URL_ROOT: ${DOLI_URL_ROOT:-https://dolibarr.${DOMAIN_NAME}}
+      PHP_INI_DATE_TIMEZONE: ${PHP_TIMEZONE:-UTC}
+    volumes:
+      - dolibarr_html:/var/www/html
+      - dolibarr_docs:/var/www/documents
+    networks:
+      - ${NETWORK_NAME:-proxy}
+    depends_on:
+      - mariadb
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dolibarr.entrypoints=http"
+      - "traefik.http.routers.dolibarr.rule=Host(`dolibarr.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.dolibarr.middlewares=dolibarr-https-redirect"
+      - "traefik.http.middlewares.dolibarr-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.dolibarr-secure.entrypoints=https"
+      - "traefik.http.routers.dolibarr-secure.rule=Host(`dolibarr.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.dolibarr-secure.tls=true"
+      - "traefik.http.routers.dolibarr-secure.tls.certresolver=cloudflare"
+      - "traefik.http.services.dolibarr.loadbalancer.server.port=80"
+
+  mariadb:
+    image: mariadb:${MARIADB_VERSION:-latest}
+    container_name: dolibarr-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${DOLI_DB_NAME:-dolibarr}
+      MYSQL_USER: ${DOLI_DB_USER:-dolibarr}
+      MYSQL_PASSWORD: ${DOLI_DB_PASSWORD:-dolibarr}
+    volumes:
+      - dolibarr_db:/var/lib/mysql
+    networks:
+      - ${NETWORK_NAME:-proxy}
+
+volumes:
+  dolibarr_html:
+  dolibarr_docs:
+  dolibarr_db:
+
+networks:
+  ${NETWORK_NAME:-proxy}:
+    external: true
