@@ -12,13 +12,14 @@ check_docker_resources() {
     fi
 
     # Check volumes
-    $volumes = @("odoo_data", "postgres_data")
-    foreach ($volume in $volumes) {
-      if ! docker volume ls | Select-String -Pattern "$volume" -Quiet; then
-        Write-Host "Creating volume $volume..."
+    volumes=("odoo_data" "postgres_data")
+    for volume in "${volumes[@]}"; do
+      if ! docker volume ls | grep -q "$volume"; then
+        echo "Creating volume $volume..."
         docker volume create "$volume"
       else
-        Write-Host "Volume $volume already exists."
+        echo "Volume $volume already exists."
+      fi
       fi
     }
   else

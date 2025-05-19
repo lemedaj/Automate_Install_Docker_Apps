@@ -295,12 +295,20 @@ install_cloudflare() {
 install_traefik() {
   echo -e "${BLUE}${GEAR} Setting up Traefik...${NC}"
   
+  # Check if Traefik is already running
+  if docker container inspect traefik >/dev/null 2>&1; then
+    echo -e "${YELLOW}${INFO} Traefik is already running${NC}"
+    echo "$(date): Traefik is already running" >> "$BASE_DIR/install_log.txt"
+    return 0
+  fi
+  
   # Run Traefik configuration script which will also start the container
   if [ -f "$TRAEFIK_DIR/traefik_config.sh" ]; then
     chmod +x "$TRAEFIK_DIR/traefik_config.sh"
     if bash "$TRAEFIK_DIR/traefik_config.sh"; then
       echo -e "${GREEN}${CHECK_MARK} Traefik configuration completed${NC}"
       echo "$(date): Traefik configuration completed" >> "$BASE_DIR/install_log.txt"
+      return 0
     else
       echo -e "${RED}${CROSS_MARK} Traefik configuration failed${NC}"
       echo "$(date): Traefik configuration failed" >> "$BASE_DIR/install_log.txt"
@@ -309,10 +317,6 @@ install_traefik() {
   else
     echo -e "${RED}${CROSS_MARK} Error: traefik_config.sh not found${NC}"
     return 1
-  fi
-  else
-    echo -e "${YELLOW}${INFO} Traefik is already running${NC}"
-    echo "$(date): Traefik is already running" >> "$BASE_DIR/install_log.txt"
   fi
 }
 
