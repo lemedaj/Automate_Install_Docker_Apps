@@ -34,50 +34,74 @@ This repository provides an automated setup for various Docker applications usin
 
 ```
 .
-├── deploy_docker_apps.sh       # Main deployment script
-├── cloudflare/                 # Cloudflare tunnel configuration
-├── dolibarr/                  # Dolibarr ERP configuration
-├── nginx/                     # Nginx web server configuration
-├── nginx-proxy-manager/       # NPM configuration
-├── odoo/                     # Odoo ERP configuration
-│   ├── custom-addons/       # Custom Odoo modules
+├── deploy_docker_apps.sh        # Main deployment script
+├── cloudflare/                  # Cloudflare tunnel configuration
+│   ├── cloudflare.env          # Cloudflare environment variables
+│   └── docker-compose-cloudflare.yml
+├── dolibarr/                   # Dolibarr ERP configuration
+│   ├── dolibarr.env           # Dolibarr environment variables
+│   └── docker-compose-dolibarr.yml
+├── nginx/                      # Nginx web server configuration
+│   ├── nginx.env              # Nginx environment variables
+│   └── docker-compose-nginx.yml
+├── nginx-proxy-manager/        # NPM configuration
+│   ├── nginx-proxy.env        # NPM environment variables
+│   └── docker-compose-nginx-proxy.yml
+├── odoo/                      # Odoo ERP configuration
+│   ├── custom-addons/        # Custom Odoo modules
+│   ├── odoo.env             # Odoo environment variables
 │   ├── docker-compose-odoo.yml
-│   ├── odoo_config.sh       # Odoo configuration script
-│   └── odoo.conf           # Odoo server configuration
-├── portainer/               # Portainer configuration
-└── traefik/                # Traefik reverse proxy configuration
-    └── data/              # Traefik data directory
-        ├── acme.json     # SSL certificates
-        ├── config.yml    # Dynamic configuration
-        └── traefik.yml   # Static configuration
+│   ├── odoo_config.sh        # Odoo configuration script
+│   └── odoo.conf            # Odoo server configuration
+├── portainer/                # Portainer configuration
+│   ├── portainer.env        # Portainer environment variables
+│   └── docker-compose-portainer.yml
+└── traefik/                 # Traefik reverse proxy configuration
+    ├── traefik.env         # Traefik environment variables
+    ├── docker-compose-traefik.yml
+    └── data/               # Traefik data directory
+        ├── acme.json      # SSL certificates
+        ├── config.yml     # Dynamic configuration
+        └── traefik.yml    # Static configuration
 ```
 
 ## Installation
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/lemedaj/Automate_Install_Docker_Apps.git
    cd Automate_Install_Docker_Apps
    ```
 
 2. Make the script executable:
+
    ```bash
    chmod +x deploy_docker_apps.sh
    ```
 
 3. Run the deployment script:
+
    ```bash
    ./deploy_docker_apps.sh
    ```
 
 4. Follow the interactive prompts to:
+
    - Configure the shared Docker network name
    - Set up your domain and credentials
    - Choose which services to install
 
+5. Environment Files:
+   - Each service has its own environment file (e.g., `traefik.env`, `odoo.env`)
+   - The deployment script will create these files with default values
+   - Review and modify the environment files in each service directory as needed
+   - Files are automatically loaded by their respective docker-compose configurations
+
 ## Configuration
 
 ### Odoo Configuration
+
 - Uses PostgreSQL database
 - Customizable through odoo.conf
 - Supports custom addons
@@ -85,12 +109,14 @@ This repository provides an automated setup for various Docker applications usin
 - Comprehensive logging options
 
 ### Traefik Configuration
+
 - Automatic SSL certificate management
 - Cloudflare DNS integration
 - Dashboard access
 - Security middleware
 
 ### Network Configuration
+
 - Configurable shared Docker network (default: proxy)
 - Consistent network naming across all services
 - Secure internal communication
@@ -98,18 +124,31 @@ This repository provides an automated setup for various Docker applications usin
 
 ## Environment Variables
 
-Each service has its own .env file with the following structure:
+Each service has its own service-specific environment file:
+
+- `traefik/traefik.env`: Traefik configuration variables
+- `odoo/odoo.env`: Odoo and PostgreSQL settings
+- `dolibarr/dolibarr.env`: Dolibarr and MariaDB configuration
+- `nginx/nginx.env`: Nginx server settings
+- `portainer/portainer.env`: Portainer configuration
+- `nginx-proxy-manager/nginx-proxy.env`: NPM settings
+- `cloudflare/cloudflare.env`: Cloudflare credentials and tunnel configuration
+
+Example structure for key environment files:
 
 ### Environment Variables Structure
+
 Each service has its own `.env` file that includes service-specific settings and shared configuration.
 
 #### Shared Configuration
+
 ```properties
 NETWORK_NAME=proxy              # Shared Docker network name
 DOMAIN_NAME=your.domain.com     # Base domain for all services
 ```
 
 #### Service-Specific Configuration (Example: Odoo)
+
 ```properties
 ODOO_VERSION=latest
 ODOO_PORT=8069
@@ -130,11 +169,13 @@ POSTGRES_PASSWORD=secure_password
 ## Maintenance
 
 ### Backup
+
 - Database backups configured for each service
 - Volume backup support
 - Automated backup scheduling
 
 ### Updates
+
 - Update containers: `docker-compose pull`
 - Rebuild services: `docker-compose up -d --build`
 - Check logs: `docker-compose logs -f`
@@ -142,6 +183,7 @@ POSTGRES_PASSWORD=secure_password
 ## Troubleshooting
 
 Common issues and solutions:
+
 1. Network conflicts: Check port availability
 2. Permission issues: Verify file permissions
 3. SSL errors: Check Cloudflare configuration
