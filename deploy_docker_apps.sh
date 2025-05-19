@@ -295,39 +295,21 @@ install_cloudflare() {
 install_traefik() {
   echo -e "${BLUE}${GEAR} Setting up Traefik...${NC}"
   
-  # Run Traefik configuration script
+  # Run Traefik configuration script which will also start the container
   if [ -f "$TRAEFIK_DIR/traefik_config.sh" ]; then
     chmod +x "$TRAEFIK_DIR/traefik_config.sh"
-    bash "$TRAEFIK_DIR/traefik_config.sh"
+    if bash "$TRAEFIK_DIR/traefik_config.sh"; then
+      echo -e "${GREEN}${CHECK_MARK} Traefik configuration completed${NC}"
+      echo "$(date): Traefik configuration completed" >> "$BASE_DIR/install_log.txt"
+    else
+      echo -e "${RED}${CROSS_MARK} Traefik configuration failed${NC}"
+      echo "$(date): Traefik configuration failed" >> "$BASE_DIR/install_log.txt"
+      return 1
+    fi
   else
     echo -e "${RED}${CROSS_MARK} Error: traefik_config.sh not found${NC}"
     return 1
   fi
-
-  # Start Traefik container
-  if ! docker container inspect traefik >/dev/null 2>&1; then
-    echo -e "${BLUE}${ROCKET} Starting Traefik container...${NC}"
-    
-    # Try docker compose v2 first, fallback to v1 if not available
-    if docker compose version &>/dev/null; then
-      docker compose -f "$TRAEFIK_DIR/docker-compose-traefik.yaml" up -d
-    elif command_exists docker-compose; then
-      docker-compose -f "$TRAEFIK_DIR/docker-compose-traefik.yaml" up -d
-    else
-      echo -e "${RED}${CROSS_MARK} Neither Docker Compose v1 nor v2 found${NC}"
-      echo "$(date): Docker Compose not found" >> "$BASE_DIR/install_log.txt"
-      return 1
-    fi
-    
-    # Verify Traefik started successfully
-    if docker container inspect traefik >/dev/null 2>&1; then
-      echo -e "${GREEN}${CHECK_MARK} Traefik installation completed${NC}"
-      echo "$(date): Traefik installation completed" >> "$BASE_DIR/install_log.txt"
-    else
-      echo -e "${RED}${CROSS_MARK} Traefik container failed to start${NC}"
-      echo "$(date): Traefik container failed to start" >> "$BASE_DIR/install_log.txt"
-      return 1
-    fi
   else
     echo -e "${YELLOW}${INFO} Traefik is already running${NC}"
     echo "$(date): Traefik is already running" >> "$BASE_DIR/install_log.txt"

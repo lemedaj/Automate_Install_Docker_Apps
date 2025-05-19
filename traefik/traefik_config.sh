@@ -262,9 +262,9 @@ configure_traefik() {
     # Start Traefik container
     echo -e "\n${BLUE}${ROCKET} Starting Traefik services...${NC}"
     if docker compose version &>/dev/null; then
-        docker compose --env-file traefik.env -f docker-compose-traefik.yaml up -d
+        docker compose --env-file "$SCRIPT_DIR/traefik.env" -f "$SCRIPT_DIR/docker-compose-traefik.yaml" up -d
     elif command_exists docker-compose; then
-        docker-compose --env-file traefik.env -f docker-compose-traefik.yaml up -d
+        docker-compose --env-file "$SCRIPT_DIR/traefik.env" -f "$SCRIPT_DIR/docker-compose-traefik.yaml" up -d
     else
         echo -e "${RED}${CROSS_MARK} Neither Docker Compose v1 nor v2 found${NC}"
         log_message "Docker Compose not found"
