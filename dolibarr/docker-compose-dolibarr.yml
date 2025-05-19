@@ -4,6 +4,7 @@ services:
     image: tuxgasy/dolibarr:${DOLIBARR_VERSION:-latest}
     container_name: dolibarr
     restart: unless-stopped
+    env_file: dolibarr.env
     environment:
       DOLI_DB_HOST: ${DOLI_DB_HOST:-mariadb}
       DOLI_DB_USER: ${DOLI_DB_USER:-dolibarr}
@@ -48,6 +49,7 @@ volumes:
   dolibarr_html:
   dolibarr_docs:
   dolibarr_db:
+
 
 networks:
   ${NETWORK_NAME:-proxy}:

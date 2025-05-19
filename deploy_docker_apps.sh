@@ -329,8 +329,8 @@ get_domain_name() {
   # Generate htpasswd for Traefik dashboard
   TRAEFIK_AUTH=$(docker run --rm httpd:2.4-alpine htpasswd -nbB "$TRAEFIK_USER" "$TRAEFIK_PASSWORD" | sed -e s/\\$/\\$\\$/g)
   
-  # Update Traefik .env file with all settings
-  cat > "$TRAEFIK_DIR/.env" << EOL
+  # Update Traefik env file with all settings
+  cat > "$TRAEFIK_DIR/traefik.env" << EOL
 TRAEFIK_VERSION=latest
 TRAEFIK_PORT=$TRAEFIK_PORT
 DOMAIN_NAME=$DOMAIN_NAME
@@ -413,19 +413,19 @@ load_env_vars() {
 
   # Load all service environment files
   set -o allexport
-  source $ODOO_DIR/.env
-  source $DOLIBARR_DIR/.env
-  source $NGINX_DIR/.env
-  source $PORTAINER_DIR/.env
-  source $NGINX_PROXY_DIR/.env
-  source $CLOUDFLARE_DIR/.env
-  source $TRAEFIK_DIR/.env
+  source $ODOO_DIR/odoo.env
+  source $DOLIBARR_DIR/dolibarr.env
+  source $NGINX_DIR/nginx.env
+  source $PORTAINER_DIR/portainer.env
+  source $NGINX_PROXY_DIR/nginx-proxy.env
+  source $CLOUDFLARE_DIR/cloudflare.env
+  source $TRAEFIK_DIR/traefik.env
   set +o allexport
 
-  # Update network name in .env files if they exist
-  for env_file in "$ODOO_DIR/.env" "$DOLIBARR_DIR/.env" "$NGINX_DIR/.env" \
-                  "$PORTAINER_DIR/.env" "$NGINX_PROXY_DIR/.env" \
-                  "$CLOUDFLARE_DIR/.env" "$TRAEFIK_DIR/.env"; do
+  # Update network name in env files if they exist
+  for env_file in "$ODOO_DIR/odoo.env" "$DOLIBARR_DIR/dolibarr.env" "$NGINX_DIR/nginx.env" \
+                  "$PORTAINER_DIR/portainer.env" "$NGINX_PROXY_DIR/nginx-proxy.env" \
+                  "$CLOUDFLARE_DIR/cloudflare.env" "$TRAEFIK_DIR/traefik.env"; do
     if [ -f "$env_file" ]; then
       # Add or update NETWORK_NAME in .env files
       if grep -q "^NETWORK_NAME=" "$env_file"; then

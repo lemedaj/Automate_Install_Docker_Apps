@@ -1,9 +1,10 @@
 version: "3"
 services:
-  portainer:    
+  portainer:
     image: portainer/portainer-ce:${PORTAINER_VERSION:-latest}
     container_name: portainer
-    restart: always    
+    restart: always
+    env_file: portainer.env
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer_data:/data

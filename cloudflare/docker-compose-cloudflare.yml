@@ -4,6 +4,7 @@ services:
     image: cloudflare/cloudflared:${CLOUDFLARED_VERSION:-latest}
     container_name: cloudflared
     restart: unless-stopped
+    env_file: cloudflare.env
     command: tunnel run
     environment:
       - TUNNEL_TOKEN=${TUNNEL_TOKEN}

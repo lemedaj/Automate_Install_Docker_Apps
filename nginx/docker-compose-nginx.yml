@@ -4,6 +4,7 @@ services:
     image: nginx:${NGINX_VERSION:-latest}
     container_name: nginx
     restart: unless-stopped
+    env_file: nginx.env
     volumes:
       - ./config:/etc/nginx/conf.d
       - ./www:/usr/share/nginx/html
@@ -26,6 +27,7 @@ volumes:
   nginx_config:
   nginx_www:
   nginx_logs:
+
 
 networks:
   ${NETWORK_NAME:-proxy}:

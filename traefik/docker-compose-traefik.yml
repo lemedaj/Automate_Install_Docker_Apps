@@ -6,7 +6,7 @@ services:
     container_name: traefik
     restart: unless-stopped
     security_opt:
-      - no-new-privileges:true    
+      - no-new-privileges:true
     networks:
       - ${NETWORK_NAME}
     ports:
@@ -18,15 +18,15 @@ services:
       CF_API_KEY: ${CF_API_KEY}
       CF_API_EMAIL: ${CF_API_EMAIL}
       DOMAIN_NAME: ${DOMAIN_NAME}
-    env_file: .env # use .env
+    env_file: traefik.env
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro      
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./data/traefik.yml:/traefik.yml:ro
       - ./data/acme.json:/acme.json
       - ./data/config.yml:/config.yml:ro
     labels:
-      - "traefik.enable=true"      
+      - "traefik.enable=true"
       - "traefik.http.routers.traefik.entrypoints=http"
       - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN_NAME}`)"
       - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_DASHBOARD_AUTH}"

@@ -3,18 +3,19 @@ services:
   odoo:
     image: odoo:${ODOO_VERSION}
     container_name: odoo
+    env_file: odoo.env
     depends_on:
       - db
     volumes:
       - odoo_data:/var/lib/odoo
       - ./odoo.conf:/etc/odoo/odoo.conf
-      - ./custom-addons:/mnt/extra-addons    
+      - ./custom-addons:/mnt/extra-addons
     environment:
       - HOST=${ODOO_DB_HOST}
       - USER=${POSTGRES_USER}
-      - PASSWORD=${POSTGRES_PASSWORD}      
-  # ports:
-  #   - "${ODOO_PORT}:8069"    
+      - PASSWORD=${POSTGRES_PASSWORD}
+    # ports:
+    #   - "${ODOO_PORT}:8069"    
     networks:
       - ${NETWORK_NAME}
     labels:
@@ -34,7 +35,7 @@ services:
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}      
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
