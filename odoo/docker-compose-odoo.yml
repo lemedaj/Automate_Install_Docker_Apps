@@ -14,7 +14,7 @@ services:
       - USER=${POSTGRES_USER}
       - PASSWORD=${POSTGRES_PASSWORD}      
   # ports:
-    #   - "${ODOO_PORT}:8069"    
+  #   - "${ODOO_PORT}:8069"    
     networks:
       - ${NETWORK_NAME}
     labels:
