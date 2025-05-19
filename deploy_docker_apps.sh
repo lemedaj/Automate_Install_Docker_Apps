@@ -19,13 +19,13 @@ GLOBE="🌐"
 SETTINGS="⚡"
 DOCKER="🐳"
 
-# Distro Icons
-UBUNTU_ICON="🟣"
-DEBIAN_ICON="🔴"
-CENTOS_ICON="🟡"
-RHEL_ICON="🔵"
-FEDORA_ICON="🟦"
-ARCH_ICON="🟨"
+# OS Icons
+UBUNTU_ICON="🐧"
+DEBIAN_ICON="🐧"
+CENTOS_ICON="🖥️"
+RHEL_ICON="🎩"
+FEDORA_ICON="🎯"
+ARCH_ICON="🏹"
 
 # Log file location
 LOG_FILE="$BASE_DIR/installation_log.txt"
@@ -158,23 +158,49 @@ install_docker() {
 install_docker_compose() {
   if ! command_exists docker-compose; then
     echo -e "${BLUE}${DOCKER} Installing Docker Compose...${NC}"
-    DOCKER_COMPOSE_VERSION="latest"
-    sudo curl -L "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    sudo chmod +x /usr/local/bin/docker-compose
+    
+    # Check if running in Windows PowerShell
+    if [[ "$(uname)" == *"MINGW"* ]] || [[ "$(uname)" == *"MSYS"* ]] || [[ "$(uname)" == *"CYGWIN"* ]]; then
+      echo -e "${YELLOW}${INFO} Detected Windows environment${NC}"
+      
+      # For Windows, prefer using Docker Desktop's built-in compose
+      if command_exists docker; then
+        echo -e "${BLUE}${INFO} Checking if Docker Desktop includes Compose...${NC}"
+        if docker compose version &>/dev/null; then
+          echo -e "${GREEN}${CHECK_MARK} Docker Compose is included with Docker Desktop${NC}"
+          COMPOSE_VERSION=$(docker compose version)
+          echo -e "${BLUE}${DOCKER} Version: ${GREEN}${COMPOSE_VERSION}${NC}"
+          echo "$(date): Using Docker Desktop's Compose - $COMPOSE_VERSION" >> "$BASE_DIR/install_log.txt"
+          return 0
+        fi
+      fi
+      
+      echo -e "${YELLOW}${INFO} Installing standalone Docker Compose...${NC}"
+      # For Windows, download compose.exe
+      COMPOSE_LATEST=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4)
+      curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_LATEST}/docker-compose-Windows-x86_64.exe" -o /usr/local/bin/docker-compose.exe
+      chmod +x /usr/local/bin/docker-compose.exe
+    else
+      # Linux/Unix installation
+      COMPOSE_LATEST=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4)
+      sudo curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_LATEST}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+      sudo chmod +x /usr/local/bin/docker-compose
+    fi
     
     # Check if installation was successful
-    if command_exists docker-compose; then
-      COMPOSE_VERSION=$(docker-compose --version)
+    if command_exists docker-compose || docker compose version &>/dev/null; then
+      COMPOSE_VERSION=$(docker-compose --version 2>/dev/null || docker compose version)
       echo -e "\n${GREEN}${CHECK_MARK} Docker Compose installation completed successfully${NC}"
       echo -e "${BLUE}${DOCKER} Version: ${GREEN}${COMPOSE_VERSION}${NC}"
       echo "$(date): Successfully installed Docker Compose - $COMPOSE_VERSION" >> "$BASE_DIR/install_log.txt"
     else
       echo -e "${RED}${CROSS_MARK} Docker Compose installation failed${NC}"
+      echo -e "${YELLOW}${INFO} Please ensure Docker Desktop is installed with Docker Compose${NC}"
       echo "$(date): Docker Compose installation failed" >> "$BASE_DIR/install_log.txt"
       exit 1
     fi
   else
-    COMPOSE_VERSION=$(docker-compose --version)
+    COMPOSE_VERSION=$(docker-compose --version 2>/dev/null || docker compose version)
     echo -e "${YELLOW}${INFO} Docker Compose is already installed: ${GREEN}${COMPOSE_VERSION}${NC}"
   fi
 }
@@ -281,9 +307,27 @@ install_traefik() {
   # Start Traefik container
   if ! docker container inspect traefik >/dev/null 2>&1; then
     echo -e "${BLUE}${ROCKET} Starting Traefik container...${NC}"
-    docker-compose -f $TRAEFIK_DIR/docker-compose-traefik.yml up -d
-    echo -e "${GREEN}${CHECK_MARK} Traefik installation completed${NC}"
-    echo "$(date): Traefik installation completed" >> "$BASE_DIR/install_log.txt"
+    
+    # Try docker compose v2 first, fallback to v1 if not available
+    if docker compose version &>/dev/null; then
+      docker compose -f "$TRAEFIK_DIR/docker-compose-traefik.yml" up -d
+    elif command_exists docker-compose; then
+      docker-compose -f "$TRAEFIK_DIR/docker-compose-traefik.yml" up -d
+    else
+      echo -e "${RED}${CROSS_MARK} Neither Docker Compose v1 nor v2 found${NC}"
+      echo "$(date): Docker Compose not found" >> "$BASE_DIR/install_log.txt"
+      return 1
+    fi
+    
+    # Verify Traefik started successfully
+    if docker container inspect traefik >/dev/null 2>&1; then
+      echo -e "${GREEN}${CHECK_MARK} Traefik installation completed${NC}"
+      echo "$(date): Traefik installation completed" >> "$BASE_DIR/install_log.txt"
+    else
+      echo -e "${RED}${CROSS_MARK} Traefik container failed to start${NC}"
+      echo "$(date): Traefik container failed to start" >> "$BASE_DIR/install_log.txt"
+      return 1
+    fi
   else
     echo -e "${YELLOW}${INFO} Traefik is already running${NC}"
     echo "$(date): Traefik is already running" >> "$BASE_DIR/install_log.txt"
@@ -544,7 +588,7 @@ check_docker_installation() {
 # Function to check and install Docker Compose
 check_docker_compose() {
   if command_exists docker-compose; then
-    COMPOSE_VERSION=$(docker-compose --version)
+    COMPOSE_VERSION=$(docker-compose --version 2>/dev/null || docker compose version)
     echo -e "${BLUE}${DOCKER} Docker Compose is already installed: ${GREEN}$COMPOSE_VERSION${NC}"
     echo "$(date): $COMPOSE_VERSION" >> "$BASE_DIR/install_log.txt"
     
@@ -597,15 +641,11 @@ main() {
   get_domain_name
   load_env_vars
 
-  # Phase 4: Core Infrastructure
-  echo -e "\n${BLUE}${SERVER} Phase 4: Installing Core Infrastructure${NC}"
-  install_traefik
-
-  # Phase 5: Application Installation
-  echo -e "\n${BLUE}${ROCKET} Phase 5: Application Installation${NC}"
+  # Phase 4: Application Installation
+  echo -e "\n${BLUE}${ROCKET} Phase 4: Application Installation${NC}"
   ask_user
 
-  # Phase 6: Completion
+  # Phase 5: Completion
   echo -e "\n${GREEN}${CHECK_MARK} Installation Complete!${NC}"
   echo -e "\n${BLUE}${INFO} Available Services:${NC}"
   display_urls
