@@ -96,6 +96,11 @@ get_traefik_config() {
     echo -e "\n${YELLOW}${INFO} Enter your Cloudflare API key:${NC}"
     read -r CF_API_KEY
     
+    # Save API key to token file
+    echo "$CF_API_KEY" > "$SCRIPT_DIR/cf_api_token.txt"
+    chmod 600 "$SCRIPT_DIR/cf_api_token.txt"
+    echo -e "${GREEN}${CHECK_MARK} Saved Cloudflare API token${NC}"
+    
     # Get Traefik dashboard credentials
     echo -e "\n${YELLOW}${INFO} Enter username for Traefik dashboard (default: admin):${NC}"
     read -r TRAEFIK_USER
@@ -110,12 +115,23 @@ get_traefik_config() {
     
     # Create Traefik env file
     cat > "$SCRIPT_DIR/traefik.env" << EOL
-TRAEFIK_VERSION=latest
+TRAEFIK_VERSION=v3.4
 TRAEFIK_PORT=$TRAEFIK_PORT
 CF_API_EMAIL=$CF_EMAIL
 CF_API_KEY=$CF_API_KEY
 TRAEFIK_DASHBOARD_AUTH="$TRAEFIK_AUTH"
+NETWORK_NAME=${NETWORK_NAME:-proxy}
+DOMAIN_NAME=${DOMAIN_NAME}
 EOL
+
+    # Export the variables for immediate use
+    export TRAEFIK_VERSION=v3.0
+    export TRAEFIK_PORT=$TRAEFIK_PORT
+    export CF_API_EMAIL=$CF_EMAIL
+    export CF_API_KEY=$CF_API_KEY
+    export TRAEFIK_DASHBOARD_AUTH="$TRAEFIK_AUTH"
+    export NETWORK_NAME=${NETWORK_NAME:-proxy}
+    export DOMAIN_NAME=${DOMAIN_NAME}
     echo -e "${GREEN}${CHECK_MARK} Created traefik.env file${NC}"
 }
 
@@ -233,6 +249,37 @@ configure_traefik() {
 
     # Handle completion and display URLs
     handle_completion
+
+    # Create network if it doesn't exist
+    echo -e "\n${BLUE}${GEAR} Creating Docker network if it doesn't exist...${NC}"
+    if ! docker network ls | grep -q "${NETWORK_NAME:-proxy}"; then
+        docker network create "${NETWORK_NAME:-proxy}"
+        echo -e "${GREEN}${CHECK_MARK} Created network ${NETWORK_NAME:-proxy}${NC}"
+    else
+        echo -e "${YELLOW}${INFO} Network ${NETWORK_NAME:-proxy} already exists${NC}"
+    fi
+
+    # Start Traefik container
+    echo -e "\n${BLUE}${ROCKET} Starting Traefik services...${NC}"
+    if docker compose version &>/dev/null; then
+        docker compose --env-file traefik.env -f docker-compose-traefik.yaml up -d
+    elif command_exists docker-compose; then
+        docker-compose --env-file traefik.env -f docker-compose-traefik.yaml up -d
+    else
+        echo -e "${RED}${CROSS_MARK} Neither Docker Compose v1 nor v2 found${NC}"
+        log_message "Docker Compose not found"
+        return 1
+    fi
+
+    # Verify Traefik started successfully
+    if docker container inspect traefik >/dev/null 2>&1; then
+        echo -e "${GREEN}${CHECK_MARK} Traefik services started successfully${NC}"
+        log_message "Traefik services started successfully"
+    else
+        echo -e "${RED}${CROSS_MARK} Traefik services failed to start${NC}"
+        log_message "Traefik services failed to start"
+        return 1
+    fi
 }
 
 # Run configuration

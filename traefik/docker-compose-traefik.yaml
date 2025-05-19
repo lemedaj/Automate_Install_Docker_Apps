@@ -1,28 +1,24 @@
-version: "3.8"
-
 services:
   traefik:
-    image: traefik:${TRAEFIK_VERSION:-latest}
+    image: traefik:v3.0
     container_name: traefik
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
     networks:
-      - ${NETWORK_NAME}
+      - proxy
     ports:
       - 80:80
       - 443:443
       # - 443:443/tcp # Uncomment if you want HTTP3
       # - 443:443/udp # Uncomment if you want HTTP3    
     environment:
-      CF_API_KEY: ${CF_API_KEY}
-      CF_API_EMAIL: ${CF_API_EMAIL}
+      TRAEFIK_PORT: ${TRAEFIK_PORT}
       DOMAIN_NAME: ${DOMAIN_NAME}
-    env_file:
-      - ./traefik.env
-    secrets:
-      cf_api_token:
-        file: ./cf_api_token.txt
+      TRAEFIK_DASHBOARD_AUTH: ${TRAEFIK_DASHBOARD_AUTH}
+      CF_DNS_API_TOKEN_FILE: /run/secrets/cf_api_token
+
+    env_file: ./traefik.env
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -47,8 +43,10 @@ services:
       - "traefik.http.routers.traefik-secure.tls.domains[0].sans=*.${DOMAIN_NAME}"
       - "traefik.http.routers.traefik-secure.service=api@internal"
 
-
+secrets:
+  cf_api_token:
+    file: ./cf_api_token.txt
 
 networks:
-  ${NETWORK_NAME}:
+  proxy:
     external: true

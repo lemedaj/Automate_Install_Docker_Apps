@@ -310,9 +310,9 @@ install_traefik() {
     
     # Try docker compose v2 first, fallback to v1 if not available
     if docker compose version &>/dev/null; then
-      docker compose -f "$TRAEFIK_DIR/docker-compose-traefik.yml" up -d
+      docker compose -f "$TRAEFIK_DIR/docker-compose-traefik.yaml" up -d
     elif command_exists docker-compose; then
-      docker-compose -f "$TRAEFIK_DIR/docker-compose-traefik.yml" up -d
+      docker-compose -f "$TRAEFIK_DIR/docker-compose-traefik.yaml" up -d
     else
       echo -e "${RED}${CROSS_MARK} Neither Docker Compose v1 nor v2 found${NC}"
       echo "$(date): Docker Compose not found" >> "$BASE_DIR/install_log.txt"
