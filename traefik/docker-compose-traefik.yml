@@ -18,7 +18,11 @@ services:
       CF_API_KEY: ${CF_API_KEY}
       CF_API_EMAIL: ${CF_API_EMAIL}
       DOMAIN_NAME: ${DOMAIN_NAME}
-    env_file: traefik.env
+    env_file:
+      - ./traefik.env
+    secrets:
+      cf_api_token:
+        file: ./cf_api_token.txt
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -43,9 +47,7 @@ services:
       - "traefik.http.routers.traefik-secure.tls.domains[0].sans=*.${DOMAIN_NAME}"
       - "traefik.http.routers.traefik-secure.service=api@internal"
 
-secrets:
-  cf_api_token:
-    file: ./cf_api_token.txt
+
 
 networks:
   ${NETWORK_NAME}:

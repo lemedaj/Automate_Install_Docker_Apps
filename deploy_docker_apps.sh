@@ -1,5 +1,42 @@
 #!/bin/bash
 
+# Colors for pretty output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Icons for better visualization
+CHECK_MARK="✓"
+CROSS_MARK="✗"
+GEAR="⚙"
+INFO="ℹ"
+ROCKET="🚀"
+WRENCH="🔧"
+SERVER="🖥"
+GLOBE="🌐"
+SETTINGS="⚡"
+DOCKER="🐳"
+
+# Distro Icons
+UBUNTU_ICON="🟣"
+DEBIAN_ICON="🔴"
+CENTOS_ICON="🟡"
+RHEL_ICON="🔵"
+FEDORA_ICON="🟦"
+ARCH_ICON="🟨"
+
+# Log file location
+LOG_FILE="$BASE_DIR/installation_log.txt"
+
+# Function to log messages
+log_message() {
+    local message=$1
+    local timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+    echo -e "$timestamp: $message" >> "$LOG_FILE"
+}
+
 # Get script directory as base directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
 BASE_DIR="$SCRIPT_DIR"
@@ -20,14 +57,14 @@ command_exists() {
 
 # Function to detect the Linux distribution
 detect_linux_distribution() {
-  echo "Select your Linux distribution:"
-  echo "1) Ubuntu"
-  echo "2) Debian"
-  echo "3) CentOS"
-  echo "4) RHEL"
-  echo "5) Fedora"
-  echo "6) Arch Linux"
-  echo "7) Auto-detect"
+  echo -e "\n${BLUE}${SETTINGS} Select your Linux distribution:${NC}"
+  echo -e "1) ${UBUNTU_ICON} Ubuntu"
+  echo -e "2) ${DEBIAN_ICON} Debian"
+  echo -e "3) ${CENTOS_ICON} CentOS"
+  echo -e "4) ${RHEL_ICON} RHEL"
+  echo -e "5) ${FEDORA_ICON} Fedora"
+  echo -e "6) ${ARCH_ICON} Arch Linux"
+  echo -e "7) ${GEAR} Auto-detect"
   read -r choice
 
   case $choice in
@@ -69,7 +106,7 @@ detect_linux_distribution() {
 install_docker() {
   if ! command_exists docker; then
     if [[ $DISTRO == "ubuntu" || $DISTRO == "debian" ]]; then
-      echo "Installing Docker for Ubuntu/Debian..."
+      echo -e "${BLUE}${DOCKER} Installing Docker for Ubuntu/Debian...${NC}"
       sudo apt-get update
       sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
       curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
@@ -77,54 +114,83 @@ install_docker() {
       sudo apt-get update
       sudo apt-get install -y docker-ce
     elif [[ $DISTRO == "centos" || $DISTRO == "rhel" ]]; then
-      echo "Installing Docker for CentOS/RHEL..."
+      echo -e "${BLUE}${DOCKER} Installing Docker for CentOS/RHEL...${NC}"
       sudo yum install -y yum-utils
       sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
       sudo yum install -y docker-ce
       sudo systemctl start docker
       sudo systemctl enable docker
     elif [[ $DISTRO == "fedora" ]]; then
-      echo "Installing Docker for Fedora..."
+      echo -e "${BLUE}${DOCKER} Installing Docker for Fedora...${NC}"
       sudo dnf -y install dnf-plugins-core
       sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
       sudo dnf install -y docker-ce docker-ce-cli containerd.io
       sudo systemctl start docker
       sudo systemctl enable docker
     elif [[ $DISTRO == "arch" ]]; then
-      echo "Installing Docker for Arch Linux..."
+      echo -e "${BLUE}${DOCKER} Installing Docker for Arch Linux...${NC}"
       sudo pacman -Syu --noconfirm docker
       sudo systemctl start docker
       sudo systemctl enable docker
     else
-      echo "Unsupported distribution."
+      echo -e "${RED}${CROSS_MARK} Unsupported distribution.${NC}"
+      exit 1
+    fi
+    
+    # Check if installation was successful
+    if command_exists docker; then
+      DOCKER_VERSION=$(docker --version)
+      echo -e "\n${GREEN}${CHECK_MARK} Docker installation completed successfully${NC}"
+      echo -e "${BLUE}${DOCKER} Version: ${GREEN}${DOCKER_VERSION}${NC}"
+      echo "$(date): Successfully installed Docker - $DOCKER_VERSION" >> "$BASE_DIR/install_log.txt"
+    else
+      echo -e "${RED}${CROSS_MARK} Docker installation failed${NC}"
+      echo "$(date): Docker installation failed" >> "$BASE_DIR/install_log.txt"
       exit 1
     fi
   else
-    echo "Docker is already installed."
+    DOCKER_VERSION=$(docker --version)
+    echo -e "${YELLOW}${INFO} Docker is already installed: ${GREEN}${DOCKER_VERSION}${NC}"
   fi
 }
 
 # Install Docker Compose if not installed
 install_docker_compose() {
   if ! command_exists docker-compose; then
-    echo "Docker Compose is not installed. Installing Docker Compose..."
+    echo -e "${BLUE}${DOCKER} Installing Docker Compose...${NC}"
     DOCKER_COMPOSE_VERSION="latest"
     sudo curl -L "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
     sudo chmod +x /usr/local/bin/docker-compose
+    
+    # Check if installation was successful
+    if command_exists docker-compose; then
+      COMPOSE_VERSION=$(docker-compose --version)
+      echo -e "\n${GREEN}${CHECK_MARK} Docker Compose installation completed successfully${NC}"
+      echo -e "${BLUE}${DOCKER} Version: ${GREEN}${COMPOSE_VERSION}${NC}"
+      echo "$(date): Successfully installed Docker Compose - $COMPOSE_VERSION" >> "$BASE_DIR/install_log.txt"
+    else
+      echo -e "${RED}${CROSS_MARK} Docker Compose installation failed${NC}"
+      echo "$(date): Docker Compose installation failed" >> "$BASE_DIR/install_log.txt"
+      exit 1
+    fi
   else
-    echo "Docker Compose is already installed."
+    COMPOSE_VERSION=$(docker-compose --version)
+    echo -e "${YELLOW}${INFO} Docker Compose is already installed: ${GREEN}${COMPOSE_VERSION}${NC}"
   fi
 }
 
 # Install Portainer
 install_portainer() {
+  echo -e "\n${BLUE}${GEAR} Setting up Portainer...${NC}"
+  
   if ! docker container inspect portainer >/dev/null 2>&1; then
-    echo "Installing Portainer..."
+    echo -e "${BLUE}${ROCKET} Starting Portainer container...${NC}"
     echo "$(date): Installing Portainer..." >> "$BASE_DIR/install_log.txt"
     docker-compose -f $PORTAINER_DIR/docker-compose-portainer.yml up -d
+    echo -e "${GREEN}${CHECK_MARK} Portainer installation completed${NC}"
     echo "$(date): Portainer installation completed" >> "$BASE_DIR/install_log.txt"
   else
-    echo "Portainer is already running."
+    echo -e "${YELLOW}${INFO} Portainer is already running${NC}"
     echo "$(date): Portainer is already running" >> "$BASE_DIR/install_log.txt"
   fi
 }
@@ -199,15 +265,27 @@ install_cloudflare() {
   fi
 }
 
-# Install Traefik
+# Configure and install Traefik
 install_traefik() {
+  echo -e "${BLUE}${GEAR} Setting up Traefik...${NC}"
+  
+  # Run Traefik configuration script
+  if [ -f "$TRAEFIK_DIR/traefik_config.sh" ]; then
+    chmod +x "$TRAEFIK_DIR/traefik_config.sh"
+    bash "$TRAEFIK_DIR/traefik_config.sh"
+  else
+    echo -e "${RED}${CROSS_MARK} Error: traefik_config.sh not found${NC}"
+    return 1
+  fi
+
+  # Start Traefik container
   if ! docker container inspect traefik >/dev/null 2>&1; then
-    echo "Installing Traefik..."
-    echo "$(date): Installing Traefik..." >> "$BASE_DIR/install_log.txt"
+    echo -e "${BLUE}${ROCKET} Starting Traefik container...${NC}"
     docker-compose -f $TRAEFIK_DIR/docker-compose-traefik.yml up -d
+    echo -e "${GREEN}${CHECK_MARK} Traefik installation completed${NC}"
     echo "$(date): Traefik installation completed" >> "$BASE_DIR/install_log.txt"
   else
-    echo "Traefik is already running."
+    echo -e "${YELLOW}${INFO} Traefik is already running${NC}"
     echo "$(date): Traefik is already running" >> "$BASE_DIR/install_log.txt"
   fi
 }
@@ -295,49 +373,32 @@ setup_service_directories() {
   echo "$(date): Repository check completed" >> "$BASE_DIR/install_log.txt"
 }
 
-# Function to get domain name from user and Cloudflare email and API key
+# Function to get domain name from user
 get_domain_name() {
-  echo "$(date): Getting domain and Cloudflare configuration..." >> "$BASE_DIR/install_log.txt"
+  echo -e "${BLUE}${INFO} Configuring Domain Settings${NC}"
+  echo "$(date): Getting domain configuration..." >> "$BASE_DIR/install_log.txt"
   
-  echo "Please enter your domain name (e.g., example.com):"
+  echo -e "\n${YELLOW}${INFO} Please enter your domain name (e.g., example.com):${NC}"
   read -r DOMAIN_NAME
+  export DOMAIN_NAME
   echo "$(date): Domain name set to: $DOMAIN_NAME" >> "$BASE_DIR/install_log.txt"
 
-  echo "Please enter your Cloudflare email:"
-  read -r CF_EMAIL
-  echo "$(date): Cloudflare email configured" >> "$BASE_DIR/install_log.txt"
-
-  echo "Please enter your Cloudflare API key:"
-  read -r CF_API_KEY
-  echo "$(date): Cloudflare API key configured" >> "$BASE_DIR/install_log.txt"
-
-  echo "Please enter Traefik dashboard port (default: 8080):"
-  read -r TRAEFIK_PORT
-  TRAEFIK_PORT=${TRAEFIK_PORT:-8080}
-  echo "$(date): Traefik dashboard port set to: $TRAEFIK_PORT" >> "$BASE_DIR/install_log.txt"
-  
-  # Get Traefik dashboard credentials
-  echo "Please enter username for Traefik dashboard (default: admin):"
-  read -r TRAEFIK_USER
-  TRAEFIK_USER=${TRAEFIK_USER:-admin}
-  
-  echo "Please enter password for Traefik dashboard (default: admin):"
-  read -r TRAEFIK_PASSWORD
-  TRAEFIK_PASSWORD=${TRAEFIK_PASSWORD:-admin}
-  echo "$(date): Traefik dashboard credentials configured" >> "$BASE_DIR/install_log.txt"
-  
-  # Generate htpasswd for Traefik dashboard
-  TRAEFIK_AUTH=$(docker run --rm httpd:2.4-alpine htpasswd -nbB "$TRAEFIK_USER" "$TRAEFIK_PASSWORD" | sed -e s/\\$/\\$\\$/g)
-  
-  # Update Traefik env file with all settings
-  cat > "$TRAEFIK_DIR/traefik.env" << EOL
-TRAEFIK_VERSION=latest
-TRAEFIK_PORT=$TRAEFIK_PORT
-DOMAIN_NAME=$DOMAIN_NAME
-CF_API_EMAIL=$CF_EMAIL
-CF_API_KEY=$CF_API_KEY
-TRAEFIK_DASHBOARD_AUTH="$TRAEFIK_AUTH"  # Generated credentials
-EOL
+  # Update all service .env files with the domain name
+  for env_file in "$ODOO_DIR/odoo.env" "$DOLIBARR_DIR/dolibarr.env" "$NGINX_DIR/nginx.env" \
+                  "$PORTAINER_DIR/portainer.env" "$NGINX_PROXY_DIR/nginx-proxy.env" \
+                  "$CLOUDFLARE_DIR/cloudflare.env" "$TRAEFIK_DIR/traefik.env"; do
+    if [ -f "$env_file" ]; then
+      if grep -q "^DOMAIN_NAME=" "$env_file"; then
+        sed -i "s/^DOMAIN_NAME=.*/DOMAIN_NAME=$DOMAIN_NAME/" "$env_file"
+      else
+        echo "DOMAIN_NAME=$DOMAIN_NAME" >> "$env_file"
+      fi
+      echo -e "${GREEN}${CHECK_MARK} Updated domain in $(basename $env_file)${NC}"
+    else
+      echo "DOMAIN_NAME=$DOMAIN_NAME" > "$env_file"
+      echo -e "${GREEN}${CHECK_MARK} Created $(basename $env_file) with domain${NC}"
+    fi
+  done
 
   echo "$(date): Created Traefik .env file" >> "$BASE_DIR/install_log.txt"
 }
@@ -458,7 +519,7 @@ display_urls() {
 check_docker_installation() {
   if command_exists docker; then
     DOCKER_VERSION=$(docker --version)
-    echo "Docker is already installed: $DOCKER_VERSION"
+    echo -e "${BLUE}${DOCKER} Docker is already installed: ${GREEN}$DOCKER_VERSION${NC}"
     echo "$(date): $DOCKER_VERSION" >> "$BASE_DIR/install_log.txt"
     
     echo "Would you like to reinstall Docker? (y/N):"
@@ -484,7 +545,7 @@ check_docker_installation() {
 check_docker_compose() {
   if command_exists docker-compose; then
     COMPOSE_VERSION=$(docker-compose --version)
-    echo "Docker Compose is already installed: $COMPOSE_VERSION"
+    echo -e "${BLUE}${DOCKER} Docker Compose is already installed: ${GREEN}$COMPOSE_VERSION${NC}"
     echo "$(date): $COMPOSE_VERSION" >> "$BASE_DIR/install_log.txt"
     
     echo "Would you like to reinstall Docker Compose? (y/N):"
@@ -508,43 +569,49 @@ check_docker_compose() {
 
 # Main function
 main() {
-  # Create log file
-  touch "$BASE_DIR/install_log.txt"
-  echo "$(date): Starting installation" >> "$BASE_DIR/install_log.txt"
+  echo -e "\n${BLUE}${ROCKET} Starting Docker Apps Installation${NC}\n"
 
-  # Detect Linux distribution
+  # Phase 1: Setup and Prerequisites
+  echo -e "${BLUE}${GEAR} Phase 1: Initial Setup${NC}"
+  touch "$LOG_FILE"
+  log_message "Starting Docker Apps Installation"
+
+  # System Detection and Requirements
+  echo -e "\n${YELLOW}${INFO} Checking system requirements...${NC}"
   detect_linux_distribution
-  echo "Selected Linux distribution: $DISTRO"
+  echo -e "${GREEN}${CHECK_MARK} Selected Linux distribution: $DISTRO${NC}"
 
-  # Check and install Docker if needed
+  # Docker Installation
+  echo -e "\n${BLUE}${WRENCH} Setting up Docker environment...${NC}"
   check_docker_installation
-
-  # Check and install Docker Compose if needed
   check_docker_compose
 
-  # Get network configuration from user
+  # Phase 2: Network Configuration
+  echo -e "\n${BLUE}${GEAR} Phase 2: Network Setup${NC}"
   get_network_config
-
-  # Create Docker network
   create_docker_network
 
-  # Setup service directories and configurations
+  # Phase 3: Service Configuration
+  echo -e "\n${BLUE}${GEAR} Phase 3: Services Setup${NC}"
   setup_service_directories
-
-  # Get domain name and Cloudflare credentials from user
   get_domain_name
-
-  # Load environment variables
   load_env_vars
 
-  # Install Traefik first as it's needed for routing
+  # Phase 4: Core Infrastructure
+  echo -e "\n${BLUE}${SERVER} Phase 4: Installing Core Infrastructure${NC}"
   install_traefik
 
-  # Ask user which apps to install
+  # Phase 5: Application Installation
+  echo -e "\n${BLUE}${ROCKET} Phase 5: Application Installation${NC}"
   ask_user
 
-  # Display the URLs with subdomains
+  # Phase 6: Completion
+  echo -e "\n${GREEN}${CHECK_MARK} Installation Complete!${NC}"
+  echo -e "\n${BLUE}${INFO} Available Services:${NC}"
   display_urls
+
+  echo -e "\n${GREEN}${ROCKET} All services have been deployed successfully!${NC}"
+  echo -e "${YELLOW}${INFO} Check the logs at: $BASE_DIR/install_log.txt for details${NC}\n"
 }
 
 # Run the main function

@@ -2,6 +2,7 @@
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+BASE_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Colors for pretty output
 RED='\033[0;31m'
@@ -10,13 +11,35 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Icons
+# Icons for better visualization
 CHECK_MARK="✓"
 CROSS_MARK="✗"
 GEAR="⚙"
 INFO="ℹ"
+GLOBE="🌐"
+LOCK="🔒"
+ROCKET="🚀"
+
+# Log file location
+LOG_FILE="$BASE_DIR/installation_log.txt"
+
+# Function to log messages
+log_message() {
+    local message=$1
+    local timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+    echo -e "$timestamp: $message" >> "$LOG_FILE"
+}
+
+# Function to display Traefik URLs
+display_traefik_urls() {
+    echo -e "\n${BLUE}${GLOBE} Traefik Access URLs:${NC}"
+    echo -e "${GREEN}${LOCK} Dashboard: https://traefik.${DOMAIN_NAME}${NC}"
+    echo -e "${YELLOW}${INFO} Default credentials: $TRAEFIK_USER / $TRAEFIK_PASSWORD${NC}"
+    log_message "Traefik URLs configured for domain: ${DOMAIN_NAME}"
+}
 
 echo -e "${BLUE}${GEAR} Configuring Traefik...${NC}"
+log_message "Starting Traefik configuration"
 
 # Function to validate input
 validate_input() {
@@ -147,6 +170,18 @@ update_config_files() {
     rm -f "${config_file}.backup" "${traefik_file}.backup"
 }
 
+# Function to handle configuration completion
+handle_completion() {
+    echo -e "${GREEN}${CHECK_MARK} Traefik configuration completed successfully${NC}"
+    log_message "Traefik configuration completed successfully"
+    
+    # Display Traefik URLs and credentials
+    display_traefik_urls "$DOMAIN_NAME"
+    
+    echo -e "\n${GREEN}${ROCKET} Traefik is ready to be started!${NC}"
+    return 0
+}
+
 # Function to configure Traefik
 configure_traefik() {
     echo -e "\n${BLUE}${GEAR} Starting Traefik configuration...${NC}"
@@ -192,14 +227,12 @@ configure_traefik() {
     # Update configuration files with environment variables
     if ! update_config_files; then
         echo -e "${RED}${CROSS_MARK} Failed to update configuration files${NC}"
+        log_message "Failed to update configuration files"
         return 1
     fi
 
-    echo -e "${GREEN}${CHECK_MARK} Traefik configuration completed successfully${NC}"
-    return 0
-
-    # Rest of the configuration...
-    # ...
+    # Handle completion and display URLs
+    handle_completion
 }
 
 # Run configuration
