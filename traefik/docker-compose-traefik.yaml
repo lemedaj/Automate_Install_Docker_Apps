@@ -13,14 +13,13 @@ services:
       # - 443:443/tcp # Uncomment if you want HTTP3
       # - 443:443/udp # Uncomment if you want HTTP3    
     environment:
-      TRAEFIK_PORT: ${TRAEFIK_PORT}
       DOMAIN_NAME: ${DOMAIN_NAME}
       TRAEFIK_DASHBOARD_AUTH: ${TRAEFIK_DASHBOARD_AUTH}
       CF_DNS_API_TOKEN_FILE: /run/secrets/cf_api_token
 
     env_file: ./traefik.env
     volumes:
-      - /etc/localtime:/etc/localtime:ro
+      #- /etc/localtime:/etc/localtime:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./data/traefik.yml:/traefik.yml:ro
       - ./data/acme.json:/acme.json
@@ -30,7 +29,6 @@ services:
       - "traefik.http.routers.traefik.entrypoints=http"
       - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN_NAME}`)"
       - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_DASHBOARD_AUTH}"
-      - "traefik.http.services.api.loadbalancer.server.port=${TRAEFIK_PORT}"
       - "traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https"
       - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
       - "traefik.http.routers.traefik.middlewares=traefik-https-redirect"

@@ -115,13 +115,13 @@ get_traefik_config() {
     
     # Create Traefik env file
     cat > "$SCRIPT_DIR/traefik.env" << EOL
-TRAEFIK_VERSION=v3.4
-TRAEFIK_PORT=$TRAEFIK_PORT
-CF_API_EMAIL=$CF_EMAIL
-CF_API_KEY=$CF_API_KEY
-TRAEFIK_DASHBOARD_AUTH="$TRAEFIK_AUTH"
-NETWORK_NAME=${NETWORK_NAME:-proxy}
-DOMAIN_NAME=${DOMAIN_NAME}
+    TRAEFIK_VERSION=v3.4
+    TRAEFIK_PORT=$TRAEFIK_PORT
+    CF_API_EMAIL=$CF_EMAIL
+    CF_API_KEY=$CF_API_KEY
+    TRAEFIK_DASHBOARD_AUTH="$TRAEFIK_AUTH"
+    NETWORK_NAME=${NETWORK_NAME}
+    DOMAIN_NAME=${DOMAIN_NAME}
 EOL
 
     # Export the variables for immediate use
@@ -130,7 +130,7 @@ EOL
     export CF_API_EMAIL=$CF_EMAIL
     export CF_API_KEY=$CF_API_KEY
     export TRAEFIK_DASHBOARD_AUTH="$TRAEFIK_AUTH"
-    export NETWORK_NAME=${NETWORK_NAME:-proxy}
+    export NETWORK_NAME=${NETWORK_NAME}
     export DOMAIN_NAME=${DOMAIN_NAME}
     echo -e "${GREEN}${CHECK_MARK} Created traefik.env file${NC}"
 }

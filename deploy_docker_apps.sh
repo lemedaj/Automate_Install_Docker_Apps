@@ -322,9 +322,8 @@ install_traefik() {
 
 # Function to get network configuration
 get_network_config() {
-  echo "Please enter the network name to use across all services (default: proxy):"
+  echo "Please enter the network name to use across all services:"
   read -r NETWORK_NAME
-  NETWORK_NAME=${NETWORK_NAME:-proxy}
   echo "$(date): Network name set to: $NETWORK_NAME" >> "$BASE_DIR/install_log.txt"
   export NETWORK_NAME
 }
@@ -499,33 +498,8 @@ ask_user() {
 
 # Function to read the environment variable values
 load_env_vars() {
-  # Export network name for all services
-  export NETWORK_NAME=${NETWORK_NAME:-proxy}
-
-  # Load all service environment files
-  set -o allexport
-  source $ODOO_DIR/odoo.env
-  source $DOLIBARR_DIR/dolibarr.env
-  source $NGINX_DIR/nginx.env
-  source $PORTAINER_DIR/portainer.env
-  source $NGINX_PROXY_DIR/nginx-proxy.env
-  source $CLOUDFLARE_DIR/cloudflare.env
-  source $TRAEFIK_DIR/traefik.env
-  set +o allexport
-
-  # Update network name in env files if they exist
-  for env_file in "$ODOO_DIR/odoo.env" "$DOLIBARR_DIR/dolibarr.env" "$NGINX_DIR/nginx.env" \
-                  "$PORTAINER_DIR/portainer.env" "$NGINX_PROXY_DIR/nginx-proxy.env" \
-                  "$CLOUDFLARE_DIR/cloudflare.env" "$TRAEFIK_DIR/traefik.env"; do
-    if [ -f "$env_file" ]; then
-      # Add or update NETWORK_NAME in .env files
-      if grep -q "^NETWORK_NAME=" "$env_file"; then
-        sed -i "s/^NETWORK_NAME=.*/NETWORK_NAME=$NETWORK_NAME/" "$env_file"
-      else
-        echo "NETWORK_NAME=$NETWORK_NAME" >> "$env_file"
-      fi
-    fi
-  done
+  # Set network name as environment variable
+  export NETWORK_NAME
 }
 
 # Function to display URLs and ports for installed apps
@@ -601,40 +575,37 @@ check_docker_compose() {
 main() {
   echo -e "\n${BLUE}${ROCKET} Starting Docker Apps Installation${NC}\n"
 
-  # Phase 1: Setup and Prerequisites
-  echo -e "${BLUE}${GEAR} Phase 1: Initial Setup${NC}"
+  # Phase 1: Environment Setup
+  echo -e "${BLUE}${GEAR} Phase 1: Environment Setup${NC}"
   touch "$LOG_FILE"
   log_message "Starting Docker Apps Installation"
 
-  # System Detection and Requirements
+  # Linux Distribution Detection
   echo -e "\n${YELLOW}${INFO} Checking system requirements...${NC}"
   detect_linux_distribution
   echo -e "${GREEN}${CHECK_MARK} Selected Linux distribution: $DISTRO${NC}"
 
-  # Docker Installation
-  echo -e "\n${BLUE}${WRENCH} Setting up Docker environment...${NC}"
+  # Phase 2: Docker Environment
+  echo -e "\n${BLUE}${GEAR} Phase 2: Docker Environment${NC}"
   check_docker_installation
   check_docker_compose
 
-  # Phase 2: Network Configuration
-  echo -e "\n${BLUE}${GEAR} Phase 2: Network Setup${NC}"
+  # Phase 3: Network Setup
+  echo -e "\n${BLUE}${GEAR} Phase 3: Network Configuration${NC}"
   get_network_config
   create_docker_network
-
-  # Phase 3: Service Configuration
-  echo -e "\n${BLUE}${GEAR} Phase 3: Services Setup${NC}"
-  setup_service_directories
-  get_domain_name
   load_env_vars
 
-  # Phase 4: Application Installation
-  echo -e "\n${BLUE}${ROCKET} Phase 4: Application Installation${NC}"
+  # Phase 4: Services Structure
+  echo -e "\n${BLUE}${GEAR} Phase 4: Services Structure${NC}"
+  setup_service_directories
+
+  # Phase 5: Application Installation
+  echo -e "\n${BLUE}${ROCKET} Phase 5: Application Installation${NC}"
   ask_user
 
-  # Phase 5: Completion
+  # Phase 6: Completion
   echo -e "\n${GREEN}${CHECK_MARK} Installation Complete!${NC}"
-  echo -e "\n${BLUE}${INFO} Available Services:${NC}"
-  display_urls
 
   echo -e "\n${GREEN}${ROCKET} All services have been deployed successfully!${NC}"
   echo -e "${YELLOW}${INFO} Check the logs at: $BASE_DIR/install_log.txt for details${NC}\n"
