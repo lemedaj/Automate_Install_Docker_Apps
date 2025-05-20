@@ -159,33 +159,10 @@ install_docker_compose() {
   if ! command_exists docker-compose; then
     echo -e "${BLUE}${DOCKER} Installing Docker Compose...${NC}"
     
-    # Check if running in Windows PowerShell
-    if [[ "$(uname)" == *"MINGW"* ]] || [[ "$(uname)" == *"MSYS"* ]] || [[ "$(uname)" == *"CYGWIN"* ]]; then
-      echo -e "${YELLOW}${INFO} Detected Windows environment${NC}"
-      
-      # For Windows, prefer using Docker Desktop's built-in compose
-      if command_exists docker; then
-        echo -e "${BLUE}${INFO} Checking if Docker Desktop includes Compose...${NC}"
-        if docker compose version &>/dev/null; then
-          echo -e "${GREEN}${CHECK_MARK} Docker Compose is included with Docker Desktop${NC}"
-          COMPOSE_VERSION=$(docker compose version)
-          echo -e "${BLUE}${DOCKER} Version: ${GREEN}${COMPOSE_VERSION}${NC}"
-          echo "$(date): Using Docker Desktop's Compose - $COMPOSE_VERSION" >> "$BASE_DIR/install_log.txt"
-          return 0
-        fi
-      fi
-      
-      echo -e "${YELLOW}${INFO} Installing standalone Docker Compose...${NC}"
-      # For Windows, download compose.exe
-      COMPOSE_LATEST=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4)
-      curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_LATEST}/docker-compose-Windows-x86_64.exe" -o /usr/local/bin/docker-compose.exe
-      chmod +x /usr/local/bin/docker-compose.exe
-    else
-      # Linux/Unix installation
-      COMPOSE_LATEST=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4)
-      sudo curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_LATEST}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-      sudo chmod +x /usr/local/bin/docker-compose
-    fi
+    # Linux/Unix installation
+    COMPOSE_LATEST=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4)
+    sudo curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_LATEST}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    sudo chmod +x /usr/local/bin/docker-compose
     
     # Check if installation was successful
     if command_exists docker-compose || docker compose version &>/dev/null; then
@@ -320,118 +297,6 @@ install_traefik() {
   fi
 }
 
-# Function to get network configuration
-get_network_config() {
-  echo "Please enter the network name to use across all services:"
-  read -r NETWORK_NAME
-  echo "$(date): Network name set to: $NETWORK_NAME" >> "$BASE_DIR/install_log.txt"
-  export NETWORK_NAME
-}
-
-# Create Docker network with user-provided name
-create_docker_network() {
-  if ! docker network ls | grep -q "$NETWORK_NAME"; then
-    echo "Creating Docker network: $NETWORK_NAME..."
-    echo "$(date): Creating Docker network: $NETWORK_NAME" >> "$BASE_DIR/install_log.txt"
-    docker network create "$NETWORK_NAME"
-    echo "$(date): Docker network created: $NETWORK_NAME" >> "$BASE_DIR/install_log.txt"
-  else
-    echo "Network $NETWORK_NAME already exists."
-    echo "$(date): Network $NETWORK_NAME already exists" >> "$BASE_DIR/install_log.txt"
-  fi
-}
-
-# Function to check required repositories and guide user for cloning
-setup_service_directories() {
-  echo "$(date): Checking required repositories..." >> "$BASE_DIR/install_log.txt"
-  
-  local missing_repos=()
-  
-  # Check if required directories exist
-  [[ ! -d "$TRAEFIK_DIR" ]] && missing_repos+=("traefik")
-  [[ ! -d "$NGINX_DIR" ]] && missing_repos+=("nginx")
-  [[ ! -d "$PORTAINER_DIR" ]] && missing_repos+=("portainer")
-  [[ ! -d "$NGINX_PROXY_DIR" ]] && missing_repos+=("nginx-proxy-manager")
-  [[ ! -d "$ODOO_DIR" ]] && missing_repos+=("odoo")
-  [[ ! -d "$DOLIBARR_DIR" ]] && missing_repos+=("dolibarr")
-  [[ ! -d "$CLOUDFLARE_DIR" ]] && missing_repos+=("cloudflare")
-
-  if [ ${#missing_repos[@]} -gt 0 ]; then
-    echo "The following repositories are missing and need to be cloned:"
-    echo "$(date): Missing repositories detected:" >> "$BASE_DIR/install_log.txt"
-    
-    for repo in "${missing_repos[@]}"; do
-      echo "- $repo"
-      echo "$(date): Missing: $repo" >> "$BASE_DIR/install_log.txt"
-    done
-    
-    echo -e "\nPlease clone the missing repositories from GitHub:"
-    echo "1. Visit: https://github.com/YOUR_USERNAME/docker-apps-repo"
-    echo "2. Clone the repository:"
-    echo "   git clone https://github.com/YOUR_USERNAME/docker-apps-repo.git"
-    echo "3. Make sure the following directory structure exists:"
-    echo "   - traefik/"
-    echo "   - nginx/"
-    echo "   - portainer/"
-    echo "   - nginx-proxy-manager/"
-    echo "   - odoo/"
-    echo "   - dolibarr/"
-    echo "   - cloudflare/"
-    
-    echo "Would you like to continue without the missing repositories? (y/N):"
-    read -r continue_setup
-    
-    if [[ ! "$continue_setup" =~ ^[Yy]$ ]]; then
-      echo "$(date): Setup cancelled - missing repositories" >> "$BASE_DIR/install_log.txt"
-      exit 1
-    fi
-  fi
-
-  # Check and set permissions for existing directories
-  if [ -d "$TRAEFIK_DIR/data" ]; then
-    if [ -f "$TRAEFIK_DIR/data/acme.json" ]; then
-      chmod 600 "$TRAEFIK_DIR/data/acme.json"
-    fi
-  fi
-  
-  # Make Odoo configuration script executable if it exists
-  if [ -f "$ODOO_DIR/odoo_config.sh" ]; then
-    chmod +x "$ODOO_DIR/odoo_config.sh"
-  fi
-  
-  echo "$(date): Repository check completed" >> "$BASE_DIR/install_log.txt"
-}
-
-# Function to get domain name from user
-get_domain_name() {
-  echo -e "${BLUE}${INFO} Configuring Domain Settings${NC}"
-  echo "$(date): Getting domain configuration..." >> "$BASE_DIR/install_log.txt"
-  
-  echo -e "\n${YELLOW}${INFO} Please enter your domain name (e.g., example.com):${NC}"
-  read -r DOMAIN_NAME
-  export DOMAIN_NAME
-  echo "$(date): Domain name set to: $DOMAIN_NAME" >> "$BASE_DIR/install_log.txt"
-
-  # Update all service .env files with the domain name
-  for env_file in "$ODOO_DIR/odoo.env" "$DOLIBARR_DIR/dolibarr.env" "$NGINX_DIR/nginx.env" \
-                  "$PORTAINER_DIR/portainer.env" "$NGINX_PROXY_DIR/nginx-proxy.env" \
-                  "$CLOUDFLARE_DIR/cloudflare.env" "$TRAEFIK_DIR/traefik.env"; do
-    if [ -f "$env_file" ]; then
-      if grep -q "^DOMAIN_NAME=" "$env_file"; then
-        sed -i "s/^DOMAIN_NAME=.*/DOMAIN_NAME=$DOMAIN_NAME/" "$env_file"
-      else
-        echo "DOMAIN_NAME=$DOMAIN_NAME" >> "$env_file"
-      fi
-      echo -e "${GREEN}${CHECK_MARK} Updated domain in $(basename $env_file)${NC}"
-    else
-      echo "DOMAIN_NAME=$DOMAIN_NAME" > "$env_file"
-      echo -e "${GREEN}${CHECK_MARK} Created $(basename $env_file) with domain${NC}"
-    fi
-  done
-
-  echo "$(date): Created Traefik .env file" >> "$BASE_DIR/install_log.txt"
-}
-
 # Function to ask user which apps to install
 ask_user() {
   echo "Which applications would you like to install?"
@@ -495,12 +360,6 @@ ask_user() {
 }
 
 
-
-# Function to read the environment variable values
-load_env_vars() {
-  # Set network name as environment variable
-  export NETWORK_NAME
-}
 
 # Function to display URLs and ports for installed apps
 display_urls() {
@@ -590,21 +449,11 @@ main() {
   check_docker_installation
   check_docker_compose
 
-  # Phase 3: Network Setup
-  echo -e "\n${BLUE}${GEAR} Phase 3: Network Configuration${NC}"
-  get_network_config
-  create_docker_network
-  load_env_vars
-
-  # Phase 4: Services Structure
-  echo -e "\n${BLUE}${GEAR} Phase 4: Services Structure${NC}"
-  setup_service_directories
-
-  # Phase 5: Application Installation
-  echo -e "\n${BLUE}${ROCKET} Phase 5: Application Installation${NC}"
+  # Phase 3: Application Installation
+  echo -e "\n${BLUE}${ROCKET} Phase 3: Application Installation${NC}"
   ask_user
 
-  # Phase 6: Completion
+  # Phase 4: Completion
   echo -e "\n${GREEN}${CHECK_MARK} Installation Complete!${NC}"
 
   echo -e "\n${GREEN}${ROCKET} All services have been deployed successfully!${NC}"
