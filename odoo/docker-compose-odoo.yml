@@ -5,7 +5,7 @@ services:
     container_name: odoo
     env_file: odoo.env
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
     volumes:
       - odoo_data:/var/lib/odoo
@@ -36,7 +36,7 @@ services:
       - "traefik.http.services.odoo.loadbalancer.server.port=${ODOO_PORT}"
       - "traefik.docker.network=${NETWORK_NAME}"
 
-  db:
+  postgres:
     image: postgres:${POSTGRES_VERSION}
     container_name: postgres
     environment:
@@ -67,7 +67,7 @@ services:
     networks:
       - ${NETWORK_NAME}
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
     labels:
       - "traefik.enable=true"
