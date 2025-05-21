@@ -212,6 +212,44 @@ EOL
     echo -e "${GREEN}${CHECK_MARK} All configuration files updated successfully${NC}"
 }
 
+# Validate that all required environment variables are set
+validate_env_vars() {
+    local required_vars=(
+        "ODOO_VERSION"
+        "ODOO_DB_HOST"
+        "POSTGRES_USER"
+        "POSTGRES_PASSWORD"
+        "NETWORK_NAME"
+        "DOMAIN_NAME"
+        "ODOO_PORT"
+        "POSTGRES_VERSION"
+        "POSTGRES_DB"
+        "PGADMIN_EMAIL"
+        "PGADMIN_PASSWORD"
+    )
+    
+    local missing_vars=()
+    for var in "${required_vars[@]}"; do
+        if [ -z "${!var}" ]; then
+            missing_vars+=("$var")
+        fi
+    done
+    
+    if [ ${#missing_vars[@]} -ne 0 ]; then
+        echo -e "${RED}${CROSS_MARK} Error: The following required variables are not set:${NC}"
+        printf '%s\n' "${missing_vars[@]}" | sed 's/^/  - /'
+        return 1
+    fi
+    
+    return 0
+}
+
+# Function to source environment file
+safe_source_env() {
+    local env_file="$1"
+    source "$env_file"
+}
+
 # Function to update docker-compose-odoo.yml with configuration values
 update_docker_compose() {
     local ODOO_DIR="$1"
@@ -227,49 +265,71 @@ update_docker_compose() {
     cp "$ODOO_DIR/docker-compose-odoo.yml" "$ODOO_DIR/docker-compose-odoo.yml.bak"
     echo -e "${GREEN}${CHECK_MARK} Backup created: docker-compose-odoo.yml.bak${NC}"
 
-    # Update all variables
+    # Load environment variables using the safe_source_env function
+    if [ -f "$ODOO_DIR/odoo.env" ]; then
+        safe_source_env "$ODOO_DIR/odoo.env"
+    else
+        echo -e "${RED}${CROSS_MARK} Error: odoo.env not found${NC}"
+        return 1
+    fi
+
+    # Validate environment variables
+    echo -e "${YELLOW}${INFO} Validating environment variables...${NC}"
+    if ! validate_env_vars; then
+        echo -e "${RED}${CROSS_MARK} Environment validation failed${NC}"
+        return 1
+    fi
+
+    # Create a temporary file with all variables expanded
     echo -e "${YELLOW}${INFO} Updating all configuration variables...${NC}"
     
-    # Update Odoo service variables
-    sed -i \
-        -e "s/odoo:[^[:space:]]*/odoo:${ODOO_VERSION}/g" \
-        -e "s/Host(\`odoo\.[^)]*\`)/Host(\`odoo.${DOMAIN_NAME}\`)/g" \
-        -e "s/traefik.docker.network=.*/traefik.docker.network=${NETWORK_NAME}/g" \
-        -e "s/server.port=[^\"']*/server.port=${ODOO_PORT}/g" \
-        "$ODOO_DIR/docker-compose-odoo.yml"
+    # Export all required variables
+    export ODOO_VERSION ODOO_DB_HOST POSTGRES_USER POSTGRES_PASSWORD NETWORK_NAME DOMAIN_NAME ODOO_PORT POSTGRES_VERSION POSTGRES_DB PGADMIN_EMAIL PGADMIN_PASSWORD
+    
+    # Create a temporary file with variables substituted
+    envsubst < "$ODOO_DIR/docker-compose-odoo.yml" > "$ODOO_DIR/docker-compose-odoo.yml.tmp"
+    
+    # Check if the temporary file is not empty and contains valid content
+    if [ ! -s "$ODOO_DIR/docker-compose-odoo.yml.tmp" ] || ! grep -q "version:" "$ODOO_DIR/docker-compose-odoo.yml.tmp"; then
+        echo -e "${RED}${CROSS_MARK} Error: Variable substitution failed (invalid output)${NC}"
+        echo -e "${YELLOW}${INFO} Restoring backup...${NC}"
+        mv "$ODOO_DIR/docker-compose-odoo.yml.bak" "$ODOO_DIR/docker-compose-odoo.yml"
+        rm -f "$ODOO_DIR/docker-compose-odoo.yml.tmp"
+        return 1
+    fi
 
-    # Update PostgreSQL service variables
-    sed -i \
-        -e "s/postgres:[^[:space:]]*/postgres:${POSTGRES_VERSION}/g" \
-        -e "s/POSTGRES_DB=.*/POSTGRES_DB=${POSTGRES_DB}/g" \
-        -e "s/POSTGRES_USER=.*/POSTGRES_USER=${POSTGRES_USER}/g" \
-        -e "s/POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=${POSTGRES_PASSWORD}/g" \
-        -e "s/pg_isready -U [^ ]* -d [^\"']*/pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}/g" \
-        "$ODOO_DIR/docker-compose-odoo.yml"
-
-    # Update pgAdmin service variables
-    sed -i \
-        -e "s/PGADMIN_DEFAULT_EMAIL=.*/PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL}/g" \
-        -e "s/PGADMIN_DEFAULT_PASSWORD=.*/PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD}/g" \
-        -e "s/Host(\`pgadmin\.[^)]*\`)/Host(\`pgadmin.${DOMAIN_NAME}\`)/g" \
-        "$ODOO_DIR/docker-compose-odoo.yml"
-
-    # Update network name in networks section
-    sed -i "/^networks:/,/^volumes:/ s/\${NETWORK_NAME}/${NETWORK_NAME}/g" "$ODOO_DIR/docker-compose-odoo.yml"
+    # Replace the original with the updated version
+    mv "$ODOO_DIR/docker-compose-odoo.yml.tmp" "$ODOO_DIR/docker-compose-odoo.yml"
 
     # Validate the docker-compose file
-    if docker compose -f "$ODOO_DIR/docker-compose-odoo.yml" config > /dev/null 2>&1; then
+    echo -e "${YELLOW}${INFO} Validating docker-compose file...${NC}"
+    
+    if ! command -v docker &> /dev/null; then
+        echo -e "${RED}${CROSS_MARK} Error: docker is not installed or not in PATH${NC}"
+        mv "$ODOO_DIR/docker-compose-odoo.yml.bak" "$ODOO_DIR/docker-compose-odoo.yml"
+        return 1
+    fi
+
+    # Use docker compose config to validate the file
+    if docker compose -f "$ODOO_DIR/docker-compose-odoo.yml" config --quiet; then
         echo -e "${GREEN}${CHECK_MARK} docker-compose-odoo.yml validation successful${NC}"
         rm "$ODOO_DIR/docker-compose-odoo.yml.bak"  # Remove backup if successful
+        
+        # Show preview of the changes
+        echo -e "${YELLOW}${INFO} Preview of updated configuration:${NC}"
+        docker compose -f "$ODOO_DIR/docker-compose-odoo.yml" config | grep -E "image:|container_name:|network:|NETWORK_NAME|DOMAIN_NAME"
+        return 0
     else
         echo -e "${RED}${CROSS_MARK} Error: docker-compose-odoo.yml validation failed${NC}"
         echo -e "${YELLOW}${INFO} Restoring backup...${NC}"
         mv "$ODOO_DIR/docker-compose-odoo.yml.bak" "$ODOO_DIR/docker-compose-odoo.yml"
         echo -e "${GREEN}${CHECK_MARK} Backup restored${NC}"
+        
+        # Print debug info
+        echo -e "${YELLOW}${INFO} Debug information:${NC}"
+        env | grep -E "ODOO|POSTGRES|NETWORK|DOMAIN|PGADMIN"
         return 1
     fi
-
-    echo -e "${GREEN}${CHECK_MARK} docker-compose-odoo.yml variables updated successfully${NC}"
 }
 
 # Function to start the containers
@@ -289,6 +349,17 @@ start_containers() {
         echo -e "${GREEN}cd $ODOO_DIR${NC}"
         echo -e "${GREEN}docker compose -f docker-compose-odoo.yml --env-file odoo.env up -d${NC}"
     fi
+}
+
+# Check if envsubst is available
+check_dependencies() {
+    if ! command -v envsubst &> /dev/null; then
+        echo -e "${RED}${CROSS_MARK} Error: envsubst is not installed. Please install gettext package.${NC}"
+        echo -e "${YELLOW}${INFO} On Windows with Chocolatey: choco install gettext${NC}"
+        echo -e "${YELLOW}${INFO} On Ubuntu/Debian: sudo apt-get install gettext-base${NC}"
+        return 1
+    fi
+    return 0
 }
 
 # Main function to orchestrate the configuration process
@@ -343,4 +414,7 @@ main() {
 ODOO_DIR="."
 
 # Start the configuration process
+if ! check_dependencies; then
+    exit 1
+fi
 main "$ODOO_DIR"
