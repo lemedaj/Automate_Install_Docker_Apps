@@ -66,6 +66,19 @@ get_odoo_config() {
     return 1
   fi
 
+  # Create directory if it doesn't exist
+  mkdir -p "$ODOO_DIR"
+
+  # Check if odoo.env exists and is writable
+  if [ -f "$ODOO_DIR/odoo.env" ]; then
+    echo -e "${YELLOW}${INFO} Found existing odoo.env file${NC}"
+    if [ ! -w "$ODOO_DIR/odoo.env" ]; then
+      echo -e "${RED}${CROSS_MARK} Error: Cannot write to $ODOO_DIR/odoo.env${NC}"
+      echo -e "${YELLOW}${INFO} Try running: sudo chown $USER:$USER $ODOO_DIR/odoo.env${NC}"
+      return 1
+    fi
+  fi
+
   echo -e "\n${BLUE}${SETTINGS} Current Configuration Values:${NC}"
   echo -e "${YELLOW}${SERVER} Odoo Configuration:${NC}"
   echo -e "   Version: ${GREEN}$ODOO_VERSION${NC}"
