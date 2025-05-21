@@ -192,8 +192,8 @@ EOL
   fi
 }
 
-# Get the directory where the script is located
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Use current directory as ODOO_DIR
+ODOO_DIR="."
 
 # Main execution
-get_odoo_config "$SCRIPT_DIR"
+get_odoo_config "$ODOO_DIR"
