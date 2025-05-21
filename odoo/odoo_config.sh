@@ -1,60 +1,59 @@
 #!/bin/bash
 
+# Colors for pretty output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Icons for better visualization
+CHECK_MARK="✓"
+CROSS_MARK="✗"
+GEAR="⚙"
+INFO="ℹ"
+ROCKET="🚀"
+DATABASE="🗄"
+LOCK="🔒"
+SERVER="🖥"
+SETTINGS="⚡"
+
 # Function to check and create Docker resources
 check_docker_resources() {
-  if [ -n "$PWSH_EXECUTION" ]; then
-    # PowerShell commands for Windows
-    if ! docker network ls | Select-String -Pattern "${NETWORK_NAME}" -Quiet; then
-      Write-Host "Creating ${NETWORK_NAME} network..."
-      docker network create ${NETWORK_NAME}
+    echo -e "\n${BLUE}${GEAR} Checking Docker resources...${NC}"
+    
+    # Check network
+    if ! docker network ls | grep -q "odoo_network"; then
+        echo -e "${YELLOW}${INFO} Creating odoo_network...${NC}"
+        docker network create odoo_network
+        echo -e "${GREEN}${CHECK_MARK} Network created${NC}"
     else
-      Write-Host "Network ${NETWORK_NAME} already exists."
+        echo -e "${GREEN}${CHECK_MARK} Network odoo_network already exists${NC}"
     fi
 
     # Check volumes
-    volumes=("odoo_data" "postgres_data")
+    volumes=("odoo_data" "postgres_data" "pgadmin_data")
     for volume in "${volumes[@]}"; do
-      if ! docker volume ls | grep -q "$volume"; then
-        echo "Creating volume $volume..."
-        docker volume create "$volume"
-      else
-        echo "Volume $volume already exists."
-      fi
-      fi
-    }
-  else
-    # Bash commands for Linux/Unix
-    # Check if network exists
-    if ! docker network ls | grep -q "${NETWORK_NAME}"; then
-      echo "Creating ${NETWORK_NAME} network..."
-      docker network create ${NETWORK_NAME}
-    else
-      echo "Network ${NETWORK_NAME} already exists."
-    fi
-
-    # Check if volumes exist
-    for volume in "odoo_data" "postgres_data"; do
-      if ! docker volume ls | grep -q "$volume"; then
-        echo "Creating volume $volume..."
-        docker volume create "$volume"
-      else
-        echo "Volume $volume already exists."
-      fi
+        if ! docker volume ls | grep -q "$volume"; then
+            echo -e "${YELLOW}${INFO} Creating volume $volume...${NC}"
+            docker volume create "$volume"
+            echo -e "${GREEN}${CHECK_MARK} Volume $volume created${NC}"
+        else
+            echo -e "${GREEN}${CHECK_MARK} Volume $volume already exists${NC}"
+        fi
     done
-  fi
 }
 
-# Default values for Odoo configuration
-ODOO_DEFAULTS=(
-  ["ODOO_VERSION"]="latest"      # Default Odoo version
-  ["ODOO_PORT"]="8069"          # Default Odoo port
-  ["ODOO_DB_HOST"]="db"         # Default database host
-  ["POSTGRES_VERSION"]="latest"  # Default PostgreSQL version
-  ["POSTGRES_DB"]="postgres"     # Default database name
-  ["POSTGRES_USER"]="odoo"      # Default database user
-  ["POSTGRES_PASSWORD"]="odoo"       # Must be set by user
-  ["DOMAIN_NAME"]="example.com"            # Must be set by user
-)
+# Default configuration values
+ODOO_VERSION="16.0"
+ODOO_PORT="8069"
+ODOO_DB_HOST="db"
+POSTGRES_VERSION="15"
+POSTGRES_DB="postgres"
+POSTGRES_USER="odoo"
+POSTGRES_PASSWORD="odoo"
+PGADMIN_EMAIL="admin@example.com"
+PGADMIN_PASSWORD="admin"
 
 # Function to get Odoo configuration from user
 get_odoo_config() {
@@ -62,59 +61,63 @@ get_odoo_config() {
 
   # Check if ODOO_DIR is provided
   if [ -z "$ODOO_DIR" ]; then
-    echo "Error: ODOO_DIR path is required"
+    echo -e "${RED}${CROSS_MARK} Error: ODOO_DIR path is required${NC}"
     return 1
   fi
 
-  # Check and create required Docker resources
-  check_docker_resources
+  echo -e "\n${BLUE}${SETTINGS} Current Configuration Values:${NC}"
+  echo -e "${YELLOW}${SERVER} Odoo Configuration:${NC}"
+  echo -e "   Version: ${GREEN}$ODOO_VERSION${NC}"
+  echo -e "   Port: ${GREEN}$ODOO_PORT${NC}"
+  echo -e "   Database Host: ${GREEN}$ODOO_DB_HOST${NC}"
+  
+  echo -e "\n${YELLOW}${DATABASE} PostgreSQL Configuration:${NC}"
+  echo -e "   Version: ${GREEN}$POSTGRES_VERSION${NC}"
+  echo -e "   Database: ${GREEN}$POSTGRES_DB${NC}"
+  echo -e "   Username: ${GREEN}$POSTGRES_USER${NC}"
+  echo -e "   Password: ${GREEN}$POSTGRES_PASSWORD${NC}"
+  
+  echo -e "\n${YELLOW}${GEAR} pgAdmin Configuration:${NC}"
+  echo -e "   Email: ${GREEN}$PGADMIN_EMAIL${NC}"
+  echo -e "   Password: ${GREEN}$PGADMIN_PASSWORD${NC}"
 
-  # Odoo Configuration
-  echo "Please enter Odoo version (default: ${ODOO_DEFAULTS[ODOO_VERSION]}):"
-  read -r ODOO_VERSION
-  ODOO_VERSION=${ODOO_VERSION:-${ODOO_DEFAULTS[ODOO_VERSION]}}
+  echo -e "\nWould you like to modify any of these values? (y/N):"
+  read -r modify_config
 
-  echo "Please enter Odoo port (default: ${ODOO_DEFAULTS[ODOO_PORT]}):"
-  read -r ODOO_PORT
-  ODOO_PORT=${ODOO_PORT:-${ODOO_DEFAULTS[ODOO_PORT]}}
+  if [[ "$modify_config" =~ ^[Yy]$ ]]; then
+    echo "Enter new values (press Enter to keep default):"
 
-  # Database Configuration
-  echo "Please enter database host (default: ${ODOO_DEFAULTS[ODOO_DB_HOST]}):"
-  read -r ODOO_DB_HOST
-  ODOO_DB_HOST=${ODOO_DB_HOST:-${ODOO_DEFAULTS[ODOO_DB_HOST]}}
+    # Prompt for new values if requested
+    echo "Odoo Version [$ODOO_VERSION]:"
+    read -r input; [ -n "$input" ] && ODOO_VERSION=$input
 
-  echo "Please enter PostgreSQL version (default: ${ODOO_DEFAULTS[POSTGRES_VERSION]}):"
-  read -r POSTGRES_VERSION
-  POSTGRES_VERSION=${POSTGRES_VERSION:-${ODOO_DEFAULTS[POSTGRES_VERSION]}}
+    echo "Odoo Port [$ODOO_PORT]:"
+    read -r input; [ -n "$input" ] && ODOO_PORT=$input
 
-  echo "Please enter PostgreSQL database name (default: ${ODOO_DEFAULTS[POSTGRES_DB]}):"
-  read -r POSTGRES_DB
-  POSTGRES_DB=${POSTGRES_DB:-${ODOO_DEFAULTS[POSTGRES_DB]}}
+    echo "Database Host [$ODOO_DB_HOST]:"
+    read -r input; [ -n "$input" ] && ODOO_DB_HOST=$input
 
-  echo "Please enter database user (default: ${ODOO_DEFAULTS[POSTGRES_USER]}):"
-  read -r POSTGRES_USER
-  POSTGRES_USER=${POSTGRES_USER:-${ODOO_DEFAULTS[POSTGRES_USER]}}
+    echo "PostgreSQL Version [$POSTGRES_VERSION]:"
+    read -r input; [ -n "$input" ] && POSTGRES_VERSION=$input
 
-  # Required fields with validation
-  echo "Please enter database password (required):"
-  read -r POSTGRES_PASSWORD
-  while [ -z "$POSTGRES_PASSWORD" ]; do
-    echo "Password cannot be empty. Please enter database password:"
-    read -r POSTGRES_PASSWORD
-  done
+    echo "Database Name [$POSTGRES_DB]:"
+    read -r input; [ -n "$input" ] && POSTGRES_DB=$input
 
-  echo "Please enter domain name (required, e.g., example.com):"
-  read -r DOMAIN_NAME
-  while [ -z "$DOMAIN_NAME" ]; do
-    echo "Domain name cannot be empty. Please enter domain name:"
-    read -r DOMAIN_NAME
-  done
+    echo "Database User [$POSTGRES_USER]:"
+    read -r input; [ -n "$input" ] && POSTGRES_USER=$input
 
-  # Create Odoo configuration directory if it doesn't exist
-  mkdir -p "$(dirname "$ODOO_DIR/.env")"
+    echo "Database Password [$POSTGRES_PASSWORD]:"
+    read -r input; [ -n "$input" ] && POSTGRES_PASSWORD=$input
 
-  # Update Odoo .env file with all settings
-  cat > "$ODOO_DIR/.env" << EOL
+    echo "pgAdmin Email [$PGADMIN_EMAIL]:"
+    read -r input; [ -n "$input" ] && PGADMIN_EMAIL=$input
+
+    echo "pgAdmin Password [$PGADMIN_PASSWORD]:"
+    read -r input; [ -n "$input" ] && PGADMIN_PASSWORD=$input
+  fi
+
+  # Create odoo.env file with configuration
+  cat > "$ODOO_DIR/odoo.env" << EOL
 # Odoo Configuration
 ODOO_VERSION=$ODOO_VERSION
 ODOO_PORT=$ODOO_PORT
@@ -126,10 +129,32 @@ POSTGRES_DB=$POSTGRES_DB
 POSTGRES_USER=$POSTGRES_USER
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 
-# Network and Domain Configuration
-NETWORK_NAME=$NETWORK_NAME
-DOMAIN_NAME=$DOMAIN_NAME
+# pgAdmin Configuration
+PGADMIN_EMAIL=$PGADMIN_EMAIL
+PGADMIN_PASSWORD=$PGADMIN_PASSWORD
 EOL
 
-  echo "Odoo configuration has been saved to $ODOO_DIR/.env"
+  # Create symbolic link for backward compatibility
+  ln -sf "$ODOO_DIR/.env" "$ODOO_DIR/odoo.env"
+  
+  echo -e "${BLUE}${INFO} Environment variables configured${NC}"
+
+  echo -e "\n${GREEN}${CHECK_MARK} Configuration has been saved to $ODOO_DIR/odoo.env${NC}"
+
+  # Check Docker resources
+  check_docker_resources
+
+  echo -e "\n${YELLOW}${INFO} Would you like to start the containers now? (y/N):${NC}"
+  read -r start_containers
+
+  if [[ "$start_containers" =~ ^[Yy]$ ]]; then
+    echo -e "${BLUE}${ROCKET} Starting Odoo containers...${NC}"
+    docker-compose -f "$ODOO_DIR/docker-compose-odoo.yml" up -d
+    echo -e "${GREEN}${CHECK_MARK} Containers are starting${NC}"
+    echo -e "${YELLOW}${INFO} You can check their status with: ${GREEN}docker ps${NC}"
+  else
+    echo -e "\n${YELLOW}${INFO} To start the containers later, run:${NC}"
+    echo -e "${GREEN}cd $ODOO_DIR${NC}"
+    echo -e "${GREEN}docker-compose -f docker-compose-odoo.yml up -d${NC}"
+  fi
 }
