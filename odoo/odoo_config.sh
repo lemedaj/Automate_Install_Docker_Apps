@@ -178,3 +178,9 @@ EOL
     echo -e "${GREEN}docker compose -f docker-compose-odoo.yml up -d${NC}"
   fi
 }
+
+# Get the directory where the script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Main execution
+get_odoo_config "$SCRIPT_DIR"
