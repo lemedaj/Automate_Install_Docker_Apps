@@ -23,12 +23,12 @@ check_docker_resources() {
     echo -e "\n${BLUE}${GEAR} Checking Docker resources...${NC}"
     
     # Check network
-    if ! docker network ls | grep -q "odoo_network"; then
-        echo -e "${YELLOW}${INFO} Creating odoo_network...${NC}"
-        docker network create odoo_network
-        echo -e "${GREEN}${CHECK_MARK} Network created${NC}"
+    if ! docker network ls | grep -q "${NETWORK_NAME}"; then
+        echo -e "${YELLOW}${INFO} Creating ${NETWORK_NAME} network...${NC}"
+        docker network create ${NETWORK_NAME}
+        echo -e "${GREEN}${CHECK_MARK} Network ${NETWORK_NAME} created${NC}"
     else
-        echo -e "${GREEN}${CHECK_MARK} Network odoo_network already exists${NC}"
+        echo -e "${GREEN}${CHECK_MARK} Network ${NETWORK_NAME} already exists${NC}"
     fi
 
     # Check volumes
@@ -52,7 +52,8 @@ POSTGRES_VERSION="15"
 POSTGRES_DB="postgres"
 POSTGRES_USER="odoo"
 POSTGRES_PASSWORD="odoo"
-PGADMIN_EMAIL="admin@example.com"
+DEFAULT_NETWORK="proxy"
+PGADMIN_EMAIL="admin@\${DOMAIN_NAME}"
 PGADMIN_PASSWORD="admin"
 
 # Function to get Odoo configuration from user
@@ -81,43 +82,35 @@ get_odoo_config() {
   echo -e "   Email: ${GREEN}$PGADMIN_EMAIL${NC}"
   echo -e "   Password: ${GREEN}$PGADMIN_PASSWORD${NC}"
 
-  echo -e "\nWould you like to modify any of these values? (y/N):"
-  read -r modify_config
-
-  if [[ "$modify_config" =~ ^[Yy]$ ]]; then
-    echo "Enter new values (press Enter to keep default):"
-
-    # Prompt for new values if requested
-    echo "Odoo Version [$ODOO_VERSION]:"
-    read -r input; [ -n "$input" ] && ODOO_VERSION=$input
-
-    echo "Odoo Port [$ODOO_PORT]:"
-    read -r input; [ -n "$input" ] && ODOO_PORT=$input
-
-    echo "Database Host [$ODOO_DB_HOST]:"
-    read -r input; [ -n "$input" ] && ODOO_DB_HOST=$input
-
-    echo "PostgreSQL Version [$POSTGRES_VERSION]:"
-    read -r input; [ -n "$input" ] && POSTGRES_VERSION=$input
-
-    echo "Database Name [$POSTGRES_DB]:"
-    read -r input; [ -n "$input" ] && POSTGRES_DB=$input
-
-    echo "Database User [$POSTGRES_USER]:"
-    read -r input; [ -n "$input" ] && POSTGRES_USER=$input
-
-    echo "Database Password [$POSTGRES_PASSWORD]:"
-    read -r input; [ -n "$input" ] && POSTGRES_PASSWORD=$input
-
-    echo "pgAdmin Email [$PGADMIN_EMAIL]:"
-    read -r input; [ -n "$input" ] && PGADMIN_EMAIL=$input
-
-    echo "pgAdmin Password [$PGADMIN_PASSWORD]:"
-    read -r input; [ -n "$input" ] && PGADMIN_PASSWORD=$input
-  fi
+  echo -e "\n${YELLOW}${INFO} Please configure the following settings:${NC}"
+  
+  # Only prompt for required values
+  echo -e "\n${YELLOW}${SETTINGS} Network Configuration:${NC}"
+  read -p "Enter network name (default: proxy): " NETWORK_NAME
+  NETWORK_NAME=${NETWORK_NAME:-$DEFAULT_NETWORK}
+  echo -e "${GREEN}${CHECK_MARK} Network name set to: $NETWORK_NAME${NC}"
+  
+  read -p "Enter domain name (default: localhost): " DOMAIN_NAME
+  DOMAIN_NAME=${DOMAIN_NAME:-localhost}
+  echo -e "${GREEN}${CHECK_MARK} Domain name set to: $DOMAIN_NAME${NC}"
+  
+  echo -e "\n${YELLOW}${GEAR} pgAdmin Configuration:${NC}"
+  # Set default pgAdmin email using the domain name
+  DEFAULT_PGADMIN_EMAIL="admin@$DOMAIN_NAME"
+  read -p "Enter pgAdmin email (default: $DEFAULT_PGADMIN_EMAIL): " PGADMIN_EMAIL
+  PGADMIN_EMAIL=${PGADMIN_EMAIL:-$DEFAULT_PGADMIN_EMAIL}
+  echo -e "${GREEN}${CHECK_MARK} pgAdmin email set to: $PGADMIN_EMAIL${NC}"
+  
+  read -p "Enter pgAdmin password (default: admin): " PGADMIN_PASSWORD
+  PGADMIN_PASSWORD=${PGADMIN_PASSWORD:-admin}
+  echo -e "${GREEN}${CHECK_MARK} pgAdmin password set${NC}"
 
   # Create odoo.env file with configuration
   cat > "$ODOO_DIR/odoo.env" << EOL
+# Network Configuration
+NETWORK_NAME=$NETWORK_NAME
+DOMAIN_NAME=$DOMAIN_NAME
+
 # Odoo Configuration
 ODOO_VERSION=$ODOO_VERSION
 ODOO_PORT=$ODOO_PORT
@@ -140,21 +133,48 @@ EOL
   echo -e "${BLUE}${INFO} Environment variables configured${NC}"
 
   echo -e "\n${GREEN}${CHECK_MARK} Configuration has been saved to $ODOO_DIR/odoo.env${NC}"
+  
+  # Display the contents of odoo.env
+  echo -e "\n${BLUE}${INFO} Current configuration in odoo.env:${NC}"
+  echo -e "${YELLOW}----------------------------------------${NC}"
+  while IFS= read -r line; do
+    if [[ $line == \#* ]]; then
+      # Print section headers in blue
+      echo -e "${BLUE}$line${NC}"
+    elif [[ $line == *"="* ]]; then
+      # Split the line into variable and value
+      var_name=$(echo "$line" | cut -d'=' -f1)
+      var_value=$(echo "$line" | cut -d'=' -f2)
+      # Print variable in yellow and value in green
+      echo -e "${YELLOW}$var_name${NC}=${GREEN}$var_value${NC}"
+    else
+      echo "$line"
+    fi
+  done < "$ODOO_DIR/odoo.env"
+  echo -e "${YELLOW}----------------------------------------${NC}"
 
-  # Check Docker resources
-  check_docker_resources
+  # Prompt user to continue with Docker resources setup
+  echo -e "\n${YELLOW}${INFO} Would you like to check and create Docker resources? (y/N):${NC}"
+  read -r create_resources
+
+  if [[ "$create_resources" =~ ^[Yy]$ ]]; then
+    # Check Docker resources
+    check_docker_resources
+  else
+    echo -e "${YELLOW}${INFO} Skipping Docker resources setup${NC}"
+  fi
 
   echo -e "\n${YELLOW}${INFO} Would you like to start the containers now? (y/N):${NC}"
   read -r start_containers
 
   if [[ "$start_containers" =~ ^[Yy]$ ]]; then
     echo -e "${BLUE}${ROCKET} Starting Odoo containers...${NC}"
-    docker-compose -f "$ODOO_DIR/docker-compose-odoo.yml" up -d
+    docker compose -f "$ODOO_DIR/docker-compose-odoo.yml" up -d
     echo -e "${GREEN}${CHECK_MARK} Containers are starting${NC}"
     echo -e "${YELLOW}${INFO} You can check their status with: ${GREEN}docker ps${NC}"
   else
     echo -e "\n${YELLOW}${INFO} To start the containers later, run:${NC}"
     echo -e "${GREEN}cd $ODOO_DIR${NC}"
-    echo -e "${GREEN}docker-compose -f docker-compose-odoo.yml up -d${NC}"
+    echo -e "${GREEN}docker compose -f docker-compose-odoo.yml up -d${NC}"
   fi
 }
