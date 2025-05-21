@@ -5,32 +5,37 @@ services:
     container_name: odoo
     env_file: odoo.env
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     volumes:
       - odoo_data:/var/lib/odoo
-      - ./odoo.conf:/etc/odoo/odoo.conf
+      - ./odoo.conf:/etc/odoo/odoo.conf:ro
       - ./custom-addons:/mnt/extra-addons
     environment:
       - HOST=${ODOO_DB_HOST}
       - USER=${POSTGRES_USER}
       - PASSWORD=${POSTGRES_PASSWORD}
-    # ports:
-    #   - "${ODOO_PORT}:8069"    
     networks:
       - ${NETWORK_NAME}
     labels:
       - "traefik.enable=true"
+      # HTTP
       - "traefik.http.routers.odoo.entrypoints=http"
       - "traefik.http.routers.odoo.rule=Host(`odoo.${DOMAIN_NAME}`)"
       - "traefik.http.routers.odoo.middlewares=odoo-https-redirect"
+      # HTTPS redirect
       - "traefik.http.middlewares.odoo-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.odoo-https-redirect.redirectscheme.permanent=true"
+      # HTTPS
       - "traefik.http.routers.odoo-secure.entrypoints=https"
       - "traefik.http.routers.odoo-secure.rule=Host(`odoo.${DOMAIN_NAME}`)"
       - "traefik.http.routers.odoo-secure.tls=true"
       - "traefik.http.routers.odoo-secure.tls.certresolver=cloudflare"
+      - "traefik.http.routers.odoo-secure.middlewares=secure-headers"
       - "traefik.http.routers.odoo-secure.service=odoo"
       - "traefik.http.services.odoo.loadbalancer.server.port=${ODOO_PORT}"
-      - "traefik.docker.network=proxy"
+      - "traefik.docker.network=${NETWORK_NAME}"
+
   db:
     image: postgres:${POSTGRES_VERSION}
     container_name: postgres
@@ -42,6 +47,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - ${NETWORK_NAME}
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -49,25 +59,34 @@ services:
     environment:
       - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL}
       - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD}
+      - PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION=True
+      - PGADMIN_CONFIG_LOGIN_BANNER="Authorized users only!"
+      - PGADMIN_CONFIG_CONSOLE_LOG_LEVEL=10
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     networks:
       - ${NETWORK_NAME}
+    depends_on:
+      db:
+        condition: service_healthy
     labels:
       - "traefik.enable=true"
+      # HTTP
       - "traefik.http.routers.pgadmin.entrypoints=http"
       - "traefik.http.routers.pgadmin.rule=Host(`pgadmin.${DOMAIN_NAME}`)"
       - "traefik.http.routers.pgadmin.middlewares=pgadmin-https-redirect"
+      # HTTPS redirect
       - "traefik.http.middlewares.pgadmin-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.pgadmin-https-redirect.redirectscheme.permanent=true"
+      # HTTPS
       - "traefik.http.routers.pgadmin-secure.entrypoints=https"
       - "traefik.http.routers.pgadmin-secure.rule=Host(`pgadmin.${DOMAIN_NAME}`)"
       - "traefik.http.routers.pgadmin-secure.tls=true"
       - "traefik.http.routers.pgadmin-secure.tls.certresolver=cloudflare"
+      - "traefik.http.routers.pgadmin-secure.middlewares=secure-headers"
       - "traefik.http.routers.pgadmin-secure.service=pgadmin"
       - "traefik.http.services.pgadmin.loadbalancer.server.port=80"
-      - "traefik.docker.network=proxy"
-    depends_on:
-      - db
+      - "traefik.docker.network=${NETWORK_NAME}"
 
 networks:
   ${NETWORK_NAME}:

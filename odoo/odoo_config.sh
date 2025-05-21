@@ -235,8 +235,72 @@ EOL
     echo -e "${GREEN}${CHECK_MARK} All configuration files updated successfully${NC}"
 }
 
+# Function to update docker-compose-odoo.yml with configuration values
+update_docker_compose() {
+    local ODOO_DIR="$1"
+    echo -e "\n${BLUE}${GEAR} Updating docker-compose-odoo.yml variables...${NC}"
+
+    # Check if docker-compose-odoo.yml exists
+    if [ ! -f "$ODOO_DIR/docker-compose-odoo.yml" ]; then
+        echo -e "${RED}${CROSS_MARK} Error: docker-compose-odoo.yml not found in $ODOO_DIR${NC}"
+        return 1
+    fi
+
+    # Create backup of original file
+    cp "$ODOO_DIR/docker-compose-odoo.yml" "$ODOO_DIR/docker-compose-odoo.yml.bak"
+    echo -e "${GREEN}${CHECK_MARK} Backup created: docker-compose-odoo.yml.bak${NC}"
+
+    # Update all variables
+    echo -e "${YELLOW}${INFO} Updating all configuration variables...${NC}"
+    
+    # Update Odoo service variables
+    sed -i \
+        -e "s/odoo:[^[:space:]]*/odoo:${ODOO_VERSION}/g" \
+        -e "s/Host(\`odoo\.[^)]*\`)/Host(\`odoo.${DOMAIN_NAME}\`)/g" \
+        -e "s/traefik.docker.network=.*/traefik.docker.network=${NETWORK_NAME}/g" \
+        -e "s/server.port=[^\"']*/server.port=${ODOO_PORT}/g" \
+        "$ODOO_DIR/docker-compose-odoo.yml"
+
+    # Update PostgreSQL service variables
+    sed -i \
+        -e "s/postgres:[^[:space:]]*/postgres:${POSTGRES_VERSION}/g" \
+        -e "s/POSTGRES_DB=.*/POSTGRES_DB=${POSTGRES_DB}/g" \
+        -e "s/POSTGRES_USER=.*/POSTGRES_USER=${POSTGRES_USER}/g" \
+        -e "s/POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=${POSTGRES_PASSWORD}/g" \
+        -e "s/pg_isready -U [^ ]* -d [^\"']*/pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}/g" \
+        "$ODOO_DIR/docker-compose-odoo.yml"
+
+    # Update pgAdmin service variables
+    sed -i \
+        -e "s/PGADMIN_DEFAULT_EMAIL=.*/PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL}/g" \
+        -e "s/PGADMIN_DEFAULT_PASSWORD=.*/PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD}/g" \
+        -e "s/Host(\`pgadmin\.[^)]*\`)/Host(\`pgadmin.${DOMAIN_NAME}\`)/g" \
+        "$ODOO_DIR/docker-compose-odoo.yml"
+
+    # Update network name in networks section
+    sed -i "/^networks:/,/^volumes:/ s/\${NETWORK_NAME}/${NETWORK_NAME}/g" "$ODOO_DIR/docker-compose-odoo.yml"
+
+    # Validate the docker-compose file
+    if docker compose -f "$ODOO_DIR/docker-compose-odoo.yml" config > /dev/null 2>&1; then
+        echo -e "${GREEN}${CHECK_MARK} docker-compose-odoo.yml validation successful${NC}"
+        rm "$ODOO_DIR/docker-compose-odoo.yml.bak"  # Remove backup if successful
+    else
+        echo -e "${RED}${CROSS_MARK} Error: docker-compose-odoo.yml validation failed${NC}"
+        echo -e "${YELLOW}${INFO} Restoring backup...${NC}"
+        mv "$ODOO_DIR/docker-compose-odoo.yml.bak" "$ODOO_DIR/docker-compose-odoo.yml"
+        echo -e "${GREEN}${CHECK_MARK} Backup restored${NC}"
+        return 1
+    fi
+
+    echo -e "${GREEN}${CHECK_MARK} docker-compose-odoo.yml variables updated successfully${NC}"
+}
+
 # Use current directory as ODOO_DIR
 ODOO_DIR="."
 
 # Main execution
 get_odoo_config "$ODOO_DIR"
+# Update configuration files
+update_config_files "$ODOO_DIR"
+# Update docker-compose file variables
+update_docker_compose "$ODOO_DIR"
