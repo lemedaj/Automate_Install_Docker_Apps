@@ -189,6 +189,52 @@ EOL
   fi
 }
 
+# Function to update configuration files with user variables
+update_config_files() {
+    local ODOO_DIR="$1"
+    echo -e "\n${BLUE}${GEAR} Updating configuration files...${NC}"
+
+    # Update odoo.conf
+    echo -e "${YELLOW}${INFO} Updating odoo.conf...${NC}"
+    sed -i "s/\${ODOO_DB_HOST}/$ODOO_DB_HOST/g" "$ODOO_DIR/odoo.conf"
+    sed -i "s/\${POSTGRES_USER}/$POSTGRES_USER/g" "$ODOO_DIR/odoo.conf"
+    sed -i "s/\${POSTGRES_PASSWORD}/$POSTGRES_PASSWORD/g" "$ODOO_DIR/odoo.conf"
+    sed -i "s/\${POSTGRES_DB}/$POSTGRES_DB/g" "$ODOO_DIR/odoo.conf"
+    sed -i "s/\${ODOO_MASTER_PASSWORD}/$POSTGRES_PASSWORD/g" "$ODOO_DIR/odoo.conf"
+    echo -e "${GREEN}${CHECK_MARK} odoo.conf updated${NC}"
+
+    # Update odoo.env
+    echo -e "${YELLOW}${INFO} Updating odoo.env...${NC}"
+    cat > "$ODOO_DIR/odoo.env" << EOL
+# Network Configuration
+NETWORK_NAME=$NETWORK_NAME
+DOMAIN_NAME=$DOMAIN_NAME
+
+# Odoo Configuration
+ODOO_VERSION=$ODOO_VERSION
+ODOO_PORT=$ODOO_PORT
+ODOO_DB_HOST=$ODOO_DB_HOST
+
+# PostgreSQL Configuration
+POSTGRES_VERSION=$POSTGRES_VERSION
+POSTGRES_DB=$POSTGRES_DB
+POSTGRES_USER=$POSTGRES_USER
+POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+
+# pgAdmin Configuration
+PGADMIN_EMAIL=$PGADMIN_EMAIL
+PGADMIN_PASSWORD=$PGADMIN_PASSWORD
+
+# Traefik Labels
+TRAEFIK_ROUTER=odoo
+TRAEFIK_ENTRYPOINT=websecure
+TRAEFIK_CERT_RESOLVER=cloudflare
+EOL
+    echo -e "${GREEN}${CHECK_MARK} odoo.env updated${NC}"
+
+    echo -e "${GREEN}${CHECK_MARK} All configuration files updated successfully${NC}"
+}
+
 # Use current directory as ODOO_DIR
 ODOO_DIR="."
 
