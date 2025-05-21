@@ -139,9 +139,6 @@ POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 PGADMIN_EMAIL=$PGADMIN_EMAIL
 PGADMIN_PASSWORD=$PGADMIN_PASSWORD
 EOL
-
-  # Create symbolic link for backward compatibility
-  ln -sf "$ODOO_DIR/.env" "$ODOO_DIR/odoo.env"
   
   echo -e "${BLUE}${INFO} Environment variables configured${NC}"
 
