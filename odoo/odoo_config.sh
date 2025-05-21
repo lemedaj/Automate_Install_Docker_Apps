@@ -45,10 +45,10 @@ check_docker_resources() {
 }
 
 # Default configuration values
-ODOO_VERSION="16.0"
+ODOO_VERSION="18.0"
 ODOO_PORT="8069"
-ODOO_DB_HOST="db"
-POSTGRES_VERSION="15"
+ODOO_DB_HOST="postgres"
+POSTGRES_VERSION="17"
 POSTGRES_DB="postgres"
 POSTGRES_USER="odoo"
 POSTGRES_PASSWORD="odoo"
@@ -163,30 +163,7 @@ EOL
   done < "$ODOO_DIR/odoo.env"
   echo -e "${YELLOW}----------------------------------------${NC}"
 
-  # Prompt user to continue with Docker resources setup
-  echo -e "\n${YELLOW}${INFO} Would you like to check and create Docker resources? (y/N):${NC}"
-  read -r create_resources
-
-  if [[ "$create_resources" =~ ^[Yy]$ ]]; then
-    # Check Docker resources
-    check_docker_resources
-  else
-    echo -e "${YELLOW}${INFO} Skipping Docker resources setup${NC}"
-  fi
-
-  echo -e "\n${YELLOW}${INFO} Would you like to start the containers now? (y/N):${NC}"
-  read -r start_containers
-
-  if [[ "$start_containers" =~ ^[Yy]$ ]]; then
-    echo -e "${BLUE}${ROCKET} Starting Odoo containers...${NC}"
-    docker compose -f "$ODOO_DIR/docker-compose-odoo.yml" up -d
-    echo -e "${GREEN}${CHECK_MARK} Containers are starting${NC}"
-    echo -e "${YELLOW}${INFO} You can check their status with: ${GREEN}docker ps${NC}"
-  else
-    echo -e "\n${YELLOW}${INFO} To start the containers later, run:${NC}"
-    echo -e "${GREEN}cd $ODOO_DIR${NC}"
-    echo -e "${GREEN}docker compose -f docker-compose-odoo.yml up -d${NC}"
-  fi
+  echo -e "\n${GREEN}${CHECK_MARK} Configuration completed successfully${NC}"
 }
 
 # Function to update configuration files with user variables
@@ -295,12 +272,75 @@ update_docker_compose() {
     echo -e "${GREEN}${CHECK_MARK} docker-compose-odoo.yml variables updated successfully${NC}"
 }
 
+# Function to start the containers
+start_containers() {
+    local ODOO_DIR="$1"
+    
+    echo -e "\n${YELLOW}${INFO} Would you like to start the containers now? (y/N):${NC}"
+    read -r start_containers
+
+    if [[ "$start_containers" =~ ^[Yy]$ ]]; then
+        echo -e "${BLUE}${ROCKET} Starting Odoo containers...${NC}"
+        docker compose -f "$ODOO_DIR/docker-compose-odoo.yml" --env-file "$ODOO_DIR/odoo.env" up -d
+        echo -e "${GREEN}${CHECK_MARK} Containers are starting${NC}"
+        echo -e "${YELLOW}${INFO} You can check their status with: ${GREEN}docker ps${NC}"
+    else
+        echo -e "\n${YELLOW}${INFO} To start the containers later, run:${NC}"
+        echo -e "${GREEN}cd $ODOO_DIR${NC}"
+        echo -e "${GREEN}docker compose -f docker-compose-odoo.yml --env-file odoo.env up -d${NC}"
+    fi
+}
+
+# Main function to orchestrate the configuration process
+main() {
+    local ODOO_DIR="$1"
+    
+    echo -e "\n${BLUE}${GEAR} Starting Odoo configuration process...${NC}"
+    
+    # Step 1: Get configuration from user
+    echo -e "\n${BLUE}${SETTINGS} Step 1: Getting user configuration...${NC}"
+    if ! get_odoo_config "$ODOO_DIR"; then
+        echo -e "${RED}${CROSS_MARK} Configuration failed. Exiting.${NC}"
+        return 1
+    fi
+    
+    # Step 2: Update configuration files
+    echo -e "\n${BLUE}${SETTINGS} Step 2: Updating configuration files...${NC}"
+    if ! update_config_files "$ODOO_DIR"; then
+        echo -e "${RED}${CROSS_MARK} Failed to update configuration files. Exiting.${NC}"
+        return 1
+    fi
+    
+    # Step 3: Update docker-compose file
+    echo -e "\n${BLUE}${SETTINGS} Step 3: Updating docker-compose file...${NC}"
+    if ! update_docker_compose "$ODOO_DIR"; then
+        echo -e "${RED}${CROSS_MARK} Failed to update docker-compose file. Exiting.${NC}"
+        return 1
+    fi
+    
+    # Step 4: Check and create Docker resources
+    echo -e "\n${BLUE}${SETTINGS} Step 4: Checking Docker resources...${NC}"
+    echo -e "\n${YELLOW}${INFO} Would you like to check and create Docker resources? (y/N):${NC}"
+    read -r create_resources
+
+    if [[ "$create_resources" =~ ^[Yy]$ ]]; then
+        if ! check_docker_resources; then
+            echo -e "${RED}${CROSS_MARK} Failed to set up Docker resources. Exiting.${NC}"
+            return 1
+        fi
+    else
+        echo -e "${YELLOW}${INFO} Skipping Docker resources setup${NC}"
+    fi
+    
+    # Step 5: Start containers
+    echo -e "\n${BLUE}${SETTINGS} Step 5: Container management...${NC}"
+    start_containers "$ODOO_DIR"
+    
+    echo -e "\n${GREEN}${CHECK_MARK} Odoo configuration process completed successfully${NC}"
+}
+
 # Use current directory as ODOO_DIR
 ODOO_DIR="."
 
-# Main execution
-get_odoo_config "$ODOO_DIR"
-# Update configuration files
-update_config_files "$ODOO_DIR"
-# Update docker-compose file variables
-update_docker_compose "$ODOO_DIR"
+# Start the configuration process
+main "$ODOO_DIR"

@@ -19,6 +19,43 @@ odoo/
 └── custom-addons/           # Directory for custom Odoo modules
 ```
 
+## ⚙️ Environment Variables
+
+### Network Configuration
+```properties
+NETWORK_NAME=proxy            # Docker network name (e.g., proxy, web)
+DOMAIN_NAME=localhost         # Domain for services (e.g., example.com)
+```
+
+### Odoo Configuration
+```properties
+ODOO_VERSION=18.0            # Odoo version to use (e.g., 16.0, 17.0, 18.0)
+ODOO_PORT=8069               # Web interface port (e.g., 8069, 8080)
+ODOO_DB_HOST=db              # Database host name (e.g., db, postgres)
+ODOO_MASTER_PASSWORD=odoo    # Master password for database management
+```
+
+### PostgreSQL Configuration
+```properties
+POSTGRES_VERSION=17          # PostgreSQL version (e.g., 15, 16, 17)
+POSTGRES_DB=postgres         # Default database name (e.g., odoo_db)
+POSTGRES_USER=odoo           # Database user (e.g., odoo, admin)
+POSTGRES_PASSWORD=odoo       # Database password (e.g., odoo123)
+```
+
+### pgAdmin Configuration
+```properties
+PGADMIN_EMAIL=admin@example.com    # Admin email (e.g., admin@example.com)
+PGADMIN_PASSWORD=admin             # Admin password (e.g., admin123)
+```
+
+### Traefik Configuration
+```properties
+TRAEFIK_ROUTER=odoo               # Router name (e.g., odoo, myapp)
+TRAEFIK_ENTRYPOINT=websecure      # HTTPS entrypoint (e.g., websecure)
+TRAEFIK_CERT_RESOLVER=cloudflare  # Certificate resolver (e.g., cloudflare)
+```
+
 ## 🛠 Configuration
 
 The service can be configured using the interactive configuration script:
@@ -27,26 +64,13 @@ The service can be configured using the interactive configuration script:
 ./odoo_config.sh
 ```
 
-### Configuration Options
-
-#### Network Configuration
-- **Network Name**: Docker network for the containers (default: proxy)
-- **Domain Name**: Domain for accessing Odoo and pgAdmin (default: localhost)
-
-#### Odoo Configuration
-- Version: 16.0
-- Port: 8069
-- Database Host: db
-
-#### PostgreSQL Configuration
-- Version: 15
-- Database: postgres
-- Default User: odoo
-- Default Password: odoo
-
-#### pgAdmin Configuration
-- Email: admin@[your-domain]
-- Default Password: admin
+The script will:
+1. Prompt for necessary configuration values
+2. Generate odoo.env file with your settings
+3. Update odoo.conf with database configuration
+4. Configure docker-compose-odoo.yml with your settings
+5. Create required Docker resources
+6. Start the containers (optional)
 
 ## 🚀 Installation
 
@@ -88,24 +112,25 @@ If you prefer to set up manually:
 
 4. Start the services:
    ```bash
-   docker compose -f docker-compose-odoo.yml up -d
+   docker compose -f docker-compose-odoo.yml --env-file odoo.env up -d
    ```
 
 ## 📊 Services
 
 ### Odoo
 - **URL**: https://odoo.[your-domain]
-- **Port**: 8069
+- **Port**: 8069 (configurable)
 - **Database Management**: https://odoo.[your-domain]/web/database/manager
 
 ### PostgreSQL
 - **Host**: db
 - **Port**: 5432
-- **Database**: postgres
+- **Database**: postgres (configurable)
 
 ### pgAdmin
 - **URL**: https://pgadmin.[your-domain]
-- Access with configured email and password
+- **Default Email**: admin@[your-domain]
+- **Default Password**: admin (configurable)
 
 ## 🔒 Security Notes
 
