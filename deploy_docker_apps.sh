@@ -44,6 +44,47 @@ PORTAINER_DIR="$BASE_DIR/portainer"
 CLOUDFLARE_DIR="$BASE_DIR/cloudflare"
 TRAEFIK_DIR="$BASE_DIR/traefik"
 
+# Network Configuration
+NETWORK_NAME=""
+
+# Function to configure network
+configure_network() {
+    echo -e "\n${BLUE}${GLOBE} Network Configuration${NC}"
+
+    # Validate Docker is installed and running
+    if ! command_exists docker; then
+        echo -e "${RED}${CROSS_MARK} Docker must be installed before configuring network${NC}"
+        return 1
+    fi
+
+    if ! docker info >/dev/null 2>&1; then
+        echo -e "${RED}${CROSS_MARK} Docker daemon is not running${NC}"
+        return 1
+    fi
+    
+    echo -e "${YELLOW}${INFO} Please configure the network settings:${NC}\n"
+    
+    # Get network name with validation
+    echo -e "${BLUE}${INFO} Enter network name (default: proxy):${NC}"
+    read -r network_input
+    NETWORK_NAME=${network_input:-proxy}
+    
+    # Validate network name
+    if [[ ! $NETWORK_NAME =~ ^[a-zA-Z0-9_-]+$ ]]; then
+        echo -e "${RED}${CROSS_MARK} Invalid network name. Use only letters, numbers, underscores, and hyphens${NC}"
+        return 1
+    fi
+    
+    # Export for other scripts
+    export NETWORK_NAME
+    
+    # Log the configuration
+    log_message "Network name set to: $NETWORK_NAME"
+    echo -e "${GREEN}${CHECK_MARK} Network name set to: ${NETWORK_NAME}${NC}"
+    
+    return 0
+}
+
 # Function to check if a command exists
 command_exists() {
   command -v "$1" >/dev/null 2>&1
@@ -515,7 +556,7 @@ initialize_icons() {
     log_message "Icons initialized with Nord Font"
 }
 
-# Main function with reorganized phases
+# Main function with corrected order
 main() {
     clear
     echo -e "\n${BLUE}${ROCKET} Welcome to Docker Apps Installation${NC}\n"
@@ -523,7 +564,7 @@ main() {
     # Phase 1: Initial Setup
     echo -e "${BLUE}${GEAR} Phase 1: Initial Setup${NC}"
     
-    # Create log file
+    # Create log file and base directory
     mkdir -p "$(dirname "$LOG_FILE")"
     touch "$LOG_FILE"
     log_message "Starting Docker Apps Installation"
@@ -563,16 +604,30 @@ main() {
 
     # Phase 3: Network Setup
     echo -e "\n${BLUE}${GEAR} Phase 3: Network Setup${NC}"
-    if ! docker network ls | grep -q "${NETWORK_NAME}"; then
-        echo -e "${YELLOW}${INFO} Creating Docker network: ${NETWORK_NAME}${NC}"
-        docker network create ${NETWORK_NAME}
-        log_message "Created Docker network: ${NETWORK_NAME}"
+    
+    # Network Configuration (must happen after Docker is installed)
+    configure_network
+    if [ $? -eq 0 ]; then
+        # Create Docker network
+        if ! docker network ls | grep -q "${NETWORK_NAME}"; then
+            echo -e "${YELLOW}${INFO} Creating Docker network: ${NETWORK_NAME}${NC}"
+            if docker network create ${NETWORK_NAME}; then
+                log_message "Created Docker network: ${NETWORK_NAME}"
+                echo -e "${GREEN}${CHECK_MARK} Docker network ${NETWORK_NAME} created successfully${NC}"
+            else
+                echo -e "${RED}${CROSS_MARK} Failed to create Docker network${NC}"
+                exit 1
+            fi
+        else
+            echo -e "${GREEN}${CHECK_MARK} Docker network ${NETWORK_NAME} already exists${NC}"
+        fi
+        pause_phase 2 "Network configuration complete"
     else
-        echo -e "${GREEN}${CHECK_MARK} Docker network ${NETWORK_NAME} already exists${NC}"
+        echo -e "${RED}${CROSS_MARK} Network configuration failed${NC}"
+        exit 1
     fi
-    pause_phase 2 "Network configured"
 
-    # Phase 4: Application Selection and Installation
+    # Phase 4: Application Installation
     echo -e "\n${BLUE}${ROCKET} Phase 4: Application Installation${NC}"
     # Show application menu and get user selection
     ask_user
@@ -583,7 +638,7 @@ main() {
         log_message "Some applications failed to install"
     fi
 
-    # Phase 5: Verification and Completion
+    # Phase 5: Verification
     echo -e "\n${BLUE}${GEAR} Phase 5: Verification${NC}"
     verify_installations
     
