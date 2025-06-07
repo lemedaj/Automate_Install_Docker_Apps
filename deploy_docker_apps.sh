@@ -10,26 +10,16 @@ RED='\033[38;2;255;85;85m'          # Red
 ORANGE='\033[38;2;255;184;108m'     # Orange
 NC='\033[0m'                        # No Color
 
-# Nord Font Icons - Will be populated after font check
+# Nord Font Icons
 declare -A ICONS
-CHECK_MARK=""  # Will be set after font verification
-CROSS_MARK=""
-GEAR=""
-INFO=""
-ROCKET=""
-WRENCH=""
-SERVER=""
-GLOBE=""
-SETTINGS=""
-DOCKER=""
 
-# OS Icons
-UBUNTU_ICON="🐧"
-DEBIAN_ICON="🐧"
-CENTOS_ICON="🖥️"
-RHEL_ICON="🎩"
-FEDORA_ICON="🎯"
-ARCH_ICON="🏹"
+# OS Icons (Using Nord Font)
+UBUNTU_ICON=""   # Ubuntu logo
+DEBIAN_ICON=""   # Debian logo
+CENTOS_ICON=""   # CentOS logo
+RHEL_ICON=""     # Red Hat logo
+FEDORA_ICON=""   # Fedora logo
+ARCH_ICON=""     # Arch Linux logo
 
 # Log file location
 LOG_FILE="$BASE_DIR/installation_log.txt"
@@ -395,10 +385,12 @@ install_nord_fonts() {
         spinner $! "Installing Nord fonts..."
         rm -rf "$temp_dir"
         echo -e "\n${GREEN}${CHECK_MARK} Nord fonts installed successfully${NC}"
-        # Reload font cache to use new icons
-        source "$0"
+        # Initialize icons after successful installation
+        initialize_icons
     else
         echo -e "${GREEN}${CHECK_MARK} Nord fonts already installed${NC}"
+        # Initialize icons if fonts are already installed
+        initialize_icons
     fi
 }
 
@@ -417,38 +409,188 @@ show_progress() {
     fi
 }
 
-# Update the main function to include pauses and progress indicators
+# Function to verify installations
+verify_installations() {
+    echo -e "\n${BLUE}${GEAR} Verifying installations...${NC}"
+    local all_good=true
+
+    # Check each service based on user selection
+    for APP in $APPS; do
+        case $APP in
+            1)  # Traefik
+                if docker container inspect traefik >/dev/null 2>&1; then
+                    echo -e "${GREEN}${CHECK_MARK} Traefik${NC} - Running"
+                else
+                    echo -e "${RED}${CROSS_MARK} Traefik${NC} - Not running"
+                    all_good=false
+                fi
+                ;;
+            2)  # Nginx
+                if docker container inspect nginx >/dev/null 2>&1; then
+                    echo -e "${GREEN}${CHECK_MARK} Nginx${NC} - Running"
+                else
+                    echo -e "${RED}${CROSS_MARK} Nginx${NC} - Not running"
+                    all_good=false
+                fi
+                ;;
+            3)  # Portainer
+                if docker container inspect portainer >/dev/null 2>&1; then
+                    echo -e "${GREEN}${CHECK_MARK} Portainer${NC} - Running"
+                else
+                    echo -e "${RED}${CROSS_MARK} Portainer${NC} - Not running"
+                    all_good=false
+                fi
+                ;;
+            4)  # Nginx Proxy Manager
+                if docker container inspect nginx-proxy-manager >/dev/null 2>&1; then
+                    echo -e "${GREEN}${CHECK_MARK} Nginx Proxy Manager${NC} - Running"
+                else
+                    echo -e "${RED}${CROSS_MARK} Nginx Proxy Manager${NC} - Not running"
+                    all_good=false
+                fi
+                ;;
+            5)  # Odoo
+                if docker container inspect odoo >/dev/null 2>&1; then
+                    echo -e "${GREEN}${CHECK_MARK} Odoo${NC} - Running"
+                else
+                    echo -e "${RED}${CROSS_MARK} Odoo${NC} - Not running"
+                    all_good=false
+                fi
+                ;;
+            6)  # Dolibarr
+                if docker container inspect dolibarr >/dev/null 2>&1; then
+                    echo -e "${GREEN}${CHECK_MARK} Dolibarr${NC} - Running"
+                else
+                    echo -e "${RED}${CROSS_MARK} Dolibarr${NC} - Not running"
+                    all_good=false
+                fi
+                ;;
+            7)  # Cloudflare
+                if docker container inspect cloudflared >/dev/null 2>&1; then
+                    echo -e "${GREEN}${CHECK_MARK} Cloudflare Tunnel${NC} - Running"
+                else
+                    echo -e "${RED}${CROSS_MARK} Cloudflare Tunnel${NC} - Not running"
+                    all_good=false
+                fi
+                ;;
+        esac
+    done
+
+    if $all_good; then
+        echo -e "\n${GREEN}${CHECK_MARK} All selected services are running properly${NC}"
+        return 0
+    else
+        echo -e "\n${RED}${CROSS_MARK} Some services are not running properly${NC}"
+        return 1
+    fi
+}
+
+# Function to initialize Nord Font icons
+initialize_icons() {
+    # Status icons
+    CHECK_MARK=""   # Success checkmark
+    CROSS_MARK=""  # Failure X mark
+    GEAR=""        # Settings gear
+    INFO=""        # Information
+    ROCKET=""      # Launch/Start
+    WRENCH=""      # Tools/Setup
+    SERVER=""      # Server
+    GLOBE=""       # Network/Web
+    SETTINGS=""    # Advanced settings
+    DOCKER=""      # Docker container
+    WARNING=""     # Warning symbol
+    CLOCK=""       # Time/Wait
+    SHIELD=""      # Security
+    DATABASE=""    # Database
+    LOCK=""        # Authentication
+
+    # OS Icons
+    UBUNTU_ICON=""   # Ubuntu logo
+    DEBIAN_ICON=""   # Debian logo
+    CENTOS_ICON=""   # CentOS logo
+    RHEL_ICON=""     # Red Hat logo
+    FEDORA_ICON=""   # Fedora logo
+    ARCH_ICON=""     # Arch Linux logo
+
+    log_message "Icons initialized with Nord Font"
+}
+
+# Main function with reorganized phases
 main() {
-    echo -e "\n${BLUE}${ROCKET} Starting Docker Apps Installation${NC}\n"
+    clear
+    echo -e "\n${BLUE}${ROCKET} Welcome to Docker Apps Installation${NC}\n"
 
-    # Font Installation
-    install_nord_fonts
-    pause_phase 3 "Preparing environment..."
-
-    # Phase 1: Environment Setup
-    echo -e "${BLUE}${GEAR} Phase 1: Environment Setup${NC}"
+    # Phase 1: Initial Setup
+    echo -e "${BLUE}${GEAR} Phase 1: Initial Setup${NC}"
+    
+    # Create log file
+    mkdir -p "$(dirname "$LOG_FILE")"
     touch "$LOG_FILE"
     log_message "Starting Docker Apps Installation"
+    
+    # Font Installation
+    install_nord_fonts
+    pause_phase 2 "Fonts configured"
 
-    # Linux Distribution Detection
-    show_progress "detect_linux_distribution" "Detecting Linux distribution..."
-    echo -e "${GREEN}${CHECK_MARK} Selected Linux distribution: $DISTRO${NC}"
-    pause_phase 3 "Moving to Docker installation phase..."
+    # Linux Distribution Selection
+    echo -e "\n${BLUE}${GEAR} Distribution Detection${NC}"
+    detect_linux_distribution
+    log_message "Selected distribution: $DISTRO"
+    pause_phase 2 "Distribution configured"
 
-    # Phase 2: Docker Environment
-    echo -e "\n${BLUE}${GEAR} Phase 2: Docker Environment${NC}"
-    show_progress "check_docker_installation" "Checking Docker installation..."
-    show_progress "check_docker_compose" "Checking Docker Compose installation..."
-    pause_phase 3 "Preparing to install applications..."
+    # Phase 2: Prerequisites
+    echo -e "\n${BLUE}${GEAR} Phase 2: Prerequisites Check${NC}"
+    
+    # Docker check and installation
+    check_docker_installation
+    if [ $? -eq 0 ]; then
+        log_message "Docker check completed"
+        pause_phase 2 "Docker configured"
+    else
+        echo -e "${RED}${CROSS_MARK} Docker configuration failed${NC}"
+        exit 1
+    fi
 
-    # Phase 3: Application Installation
-    echo -e "\n${BLUE}${ROCKET} Phase 3: Application Installation${NC}"
+    # Docker Compose check and installation
+    check_docker_compose
+    if [ $? -eq 0 ]; then
+        log_message "Docker Compose check completed"
+        pause_phase 2 "Docker Compose configured"
+    else
+        echo -e "${RED}${CROSS_MARK} Docker Compose configuration failed${NC}"
+        exit 1
+    fi
+
+    # Phase 3: Network Setup
+    echo -e "\n${BLUE}${GEAR} Phase 3: Network Setup${NC}"
+    if ! docker network ls | grep -q "${NETWORK_NAME}"; then
+        echo -e "${YELLOW}${INFO} Creating Docker network: ${NETWORK_NAME}${NC}"
+        docker network create ${NETWORK_NAME}
+        log_message "Created Docker network: ${NETWORK_NAME}"
+    else
+        echo -e "${GREEN}${CHECK_MARK} Docker network ${NETWORK_NAME} already exists${NC}"
+    fi
+    pause_phase 2 "Network configured"
+
+    # Phase 4: Application Selection and Installation
+    echo -e "\n${BLUE}${ROCKET} Phase 4: Application Installation${NC}"
+    # Show application menu and get user selection
     ask_user
+    if [ $? -eq 0 ]; then
+        log_message "Applications installed successfully"
+    else
+        echo -e "${RED}${CROSS_MARK} Some applications failed to install${NC}"
+        log_message "Some applications failed to install"
+    fi
 
-    # Phase 4: Completion
+    # Phase 5: Verification and Completion
+    echo -e "\n${BLUE}${GEAR} Phase 5: Verification${NC}"
+    verify_installations
+    
     echo -e "\n${GREEN}${CHECK_MARK} Installation Complete!${NC}"
-    echo -e "\n${GREEN}${ROCKET} All services have been deployed successfully!${NC}"
-    echo -e "${YELLOW}${INFO} Check the logs at: $BASE_DIR/install_log.txt for details${NC}\n"
+    echo -e "${GREEN}${ROCKET} Successfully deployed services:${NC}"
+    display_urls
+    echo -e "\n${YELLOW}${INFO} Installation logs available at: $BASE_DIR/install_log.txt${NC}\n"
 }
 
 # Run the main function
