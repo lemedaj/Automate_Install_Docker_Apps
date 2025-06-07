@@ -109,7 +109,7 @@ detect_linux_distribution() {
     4) DISTRO="rhel" ;;
     5) DISTRO="fedora" ;;
     6) DISTRO="arch" ;;
-    7) Auto-detect
+    7) 
       if [ -f /etc/os-release ]; then
         . /etc/os-release
         DISTRO=$ID
@@ -260,6 +260,30 @@ install_docker_compose() {
     COMPOSE_VERSION=$(docker-compose --version 2>/dev/null || docker compose version)
     echo -e "${YELLOW}${INFO} Docker Compose is already installed: ${GREEN}${COMPOSE_VERSION}${NC}"
   fi
+}
+
+# Function to check Docker Compose installation
+check_docker_compose() {
+    echo -e "\n${BLUE}${GEAR} Checking Docker Compose installation...${NC}"
+    
+    # Check if traditional docker-compose is installed
+    if command_exists docker-compose; then
+        COMPOSE_VERSION=$(docker-compose --version)
+        echo -e "${GREEN}${CHECK_MARK} Docker Compose (Legacy) is installed: ${COMPOSE_VERSION}${NC}"
+        return 0
+    fi
+    
+    # Check if Docker Compose plugin is available
+    if docker compose version &>/dev/null; then
+        COMPOSE_VERSION=$(docker compose version)
+        echo -e "${GREEN}${CHECK_MARK} Docker Compose (Plugin) is installed: ${COMPOSE_VERSION}${NC}"
+        return 0
+    fi
+    
+    # If neither is available, install Docker Compose
+    echo -e "${YELLOW}${INFO} Docker Compose not found. Installing...${NC}"
+    install_docker_compose
+    return $?
 }
 
 # Install Portainer with progress
@@ -454,6 +478,14 @@ install_nord_fonts() {
                 sudo dnf install -y unzip
             elif [[ $DISTRO == "arch" ]]; then
                 sudo pacman -S --noconfirm unzip
+            else
+                echo -e "${RED}${CROSS_MARK} Could not install unzip - unsupported distribution${NC}"
+                return 1
+            fi
+            
+            if ! command_exists unzip; then
+                echo -e "${RED}${CROSS_MARK} Failed to install unzip${NC}"
+                return 1
             fi
         fi
         
