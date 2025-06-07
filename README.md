@@ -11,6 +11,20 @@ This repository provides an automated setup for various Docker applications usin
 - Modular configuration
 - Secure by default
 - Multi-platform support (Linux/Windows)
+- Visual installation progress with Nord icons
+- Dracula theme colors for better readability
+- Background process visibility
+- Phase transitions with progress indicators
+- Improved error handling and logging
+
+## Visual Improvements
+
+- **Progress Tracking**: Visual spinners show real-time progress
+- **Color Coding**: Uses Dracula theme colors for better visibility
+- **Nord Icons**: Beautiful icons for status indicators
+- **Phase Transitions**: Clear separation between installation phases
+- **Error Visualization**: Enhanced error reporting with color coding
+- **Status Updates**: Real-time feedback on background processes
 
 ## Applications Included
 
@@ -29,6 +43,8 @@ This repository provides an automated setup for various Docker applications usin
 - Git
 - Domain name with Cloudflare DNS
 - Bash/PowerShell
+- fontconfig (automatically installed if missing)
+- Nord fonts (automatically installed if missing)
 
 ## Directory Structure
 
@@ -86,17 +102,42 @@ This repository provides an automated setup for various Docker applications usin
    ./deploy_docker_apps.sh
    ```
 
-4. Follow the interactive prompts to:
-
-   - Configure the shared Docker network name
-   - Set up your domain and credentials
-   - Choose which services to install
+4. The script will:
+   - Check and install required fonts and dependencies
+   - Detect your Linux distribution
+   - Install Docker and Docker Compose if needed
+   - Guide you through service selection with visual feedback
+   - Show real-time progress for each installation phase
+   - Provide clear status updates and error messages
 
 5. Environment Files:
    - Each service has its own environment file (e.g., `traefik.env`, `odoo.env`)
-   - The deployment script will create these files with default values
-   - Review and modify the environment files in each service directory as needed
-   - Files are automatically loaded by their respective docker-compose configurations
+   - Files are created with default values during installation
+   - Review and modify the environment files as needed
+   - Configuration is automatically loaded by respective services
+
+## Installation Phases
+
+1. **Environment Setup**
+   - Font installation check
+   - System requirements verification
+   - Linux distribution detection
+
+2. **Docker Environment**
+   - Docker installation/verification
+   - Docker Compose setup
+   - Network configuration
+
+3. **Application Installation**
+   - Interactive service selection
+   - Dependency resolution
+   - Configuration generation
+   - Container deployment
+
+4. **Completion**
+   - Service verification
+   - URL display
+   - Log file generation
 
 ## Configuration
 
@@ -165,6 +206,39 @@ POSTGRES_PASSWORD=secure_password
 - No default credentials
 - Restricted network access
 - Regular security updates
+
+## Security Features
+
+### Traefik Security Configuration
+- Automatic HTTPS redirection
+- SSL/TLS certificate management via Cloudflare
+- Strict security headers implementation
+- HTTP/3 support (optional)
+- Rate limiting
+- IP filtering capabilities
+
+### Application Security
+- Secure headers middleware for all services
+- CORS policy enforcement
+- XSS protection
+- Content Security Policy
+- Strict Transport Security (HSTS)
+- Frame options control
+- Content type verification
+- Referrer policy enforcement
+- Permissions policy control
+
+### Database Security
+- Automated PostgreSQL health checks
+- Secure credential management
+- Volume isolation
+- Network segmentation
+
+### Network Security
+- Isolated Docker network
+- Internal service discovery
+- External access control
+- Cloudflare tunnel integration
 
 ## Maintenance
 
