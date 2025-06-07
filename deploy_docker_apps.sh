@@ -14,28 +14,13 @@ NC='\033[0m'                        # No Color
 declare -A ICONS
 
 # OS Icons (Using Nord Font)
-UBUNTU_ICON=""   # Ub            4)  # Nginx Proxy Manager
-                if docker container inspect nginx-proxy-manager >/dev/null 2>&1; then
-                    echo -e "${GREEN}${GLOBE} Nginx Proxy Manager:${NC} http://localhost:81"
-                fi
-                ;;
-            5)  # Odoo
-                if docker container inspect odoo >/dev/null 2>&1; then
-                    echo -e "${GREEN}${GLOBE} Odoo:${NC} http://localhost:8069"
-                fi
-                ;;
-            6)  # Dolibarr
-                if docker container inspect dolibarr >/dev/null 2>&1; then
-                    echo -e "${GREEN}${GLOBE} Dolibarr:${NC} http://localhost:8080"
-                fi
-                ;;
-            7)  # Cloudflare
-                if docker container inspect cloudflared >/dev/null 2>&1; then
-                    echo -e "${GREEN}${GLOBE} Cloudflare Tunnel Dashboard:${NC} https://dash.cloudflare.com"
-                fi
-                ;;
-        esac
-    done
+UBUNTU_ICON=""   # Ubuntu logo
+DEBIAN_ICON=""   # Debian logo
+CENTOS_ICON=""   # CentOS logo
+RHEL_ICON=""     # Red Hat logo
+FEDORA_ICON=""   # Fedora logo
+ARCH_ICON=""     # Arch Linux logo
+
 
     # Count number of services showing URLs
     local services_up=0
@@ -56,11 +41,9 @@ UBUNTU_ICON=""   # Ub            4)  # Nginx Proxy Manager
         echo -e "\n${YELLOW}${WARNING} Some services are not running. URLs are only shown for running services.${NC}"
         echo -e "${YELLOW}${INFO} Check the logs at: $BASE_DIR/install_log.txt for details${NC}"
     fi
-}N_ICON=""   # Debian logo
-CENTOS_ICON=""   # CentOS logo
-RHEL_ICON=""     # Red Hat logo
-FEDORA_ICON=""   # Fedora logo
-ARCH_ICON=""     # Arch Linux logo
+}
+
+
 
 # Log file location
 LOG_FILE="$BASE_DIR/installation_log.txt"
