@@ -21,8 +21,8 @@ RHEL_ICON=""     # Red Hat logo
 FEDORA_ICON=""   # Fedora logo
 ARCH_ICON=""     # Arch Linux logo
 
-
-    # Count number of services showing URLs
+# Function to count running services
+count_running_services() {
     local services_up=0
     for APP in $APPS; do
         case $APP in
@@ -37,12 +37,12 @@ ARCH_ICON=""     # Arch Linux logo
     done
 
     # Show warning if not all selected services are up
-    if [ $services_up -lt $(echo $APPS | wc -w) ]; then
+    local total_apps=$(echo "$APPS" | wc -w)
+    if [ $services_up -lt $total_apps ]; then
         echo -e "\n${YELLOW}${WARNING} Some services are not running. URLs are only shown for running services.${NC}"
         echo -e "${YELLOW}${INFO} Check the logs at: $BASE_DIR/install_log.txt for details${NC}"
     fi
 }
-
 
 
 # Log file location
