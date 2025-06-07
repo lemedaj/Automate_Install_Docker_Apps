@@ -575,12 +575,47 @@ install_nord_fonts() {
         fi
         
         local temp_dir=$(mktemp -d)
+
+        # Ensure fontconfig is installed before running fc-cache
+        if ! command_exists fc-cache; then
+            echo -e "${YELLOW}${INFO} Installing fontconfig...${NC}"
+            case $DISTRO in
+                ubuntu|debian)
+                    sudo apt-get update && sudo apt-get install -y fontconfig
+                    ;;
+                centos|rhel|fedora)
+                    sudo dnf install -y fontconfig
+                    ;;
+                arch)
+                    sudo pacman -S --noconfirm fontconfig
+                    ;;
+                *)
+                    if command -v apt-get &>/dev/null; then
+                        sudo apt-get update && sudo apt-get install -y fontconfig
+                    elif command -v dnf &>/dev/null; then
+                        sudo dnf install -y fontconfig
+                    elif command -v yum &>/dev/null; then
+                        sudo yum install -y fontconfig
+                    elif command -v zypper &>/dev/null; then
+                        sudo zypper install -y fontconfig
+                    else
+                        echo -e "${RED}${CROSS_MARK} Could not install fontconfig - no supported package manager found${NC}"
+                        return 1
+                    fi
+                    ;;
+            esac
+        fi
+
         (
             cd "$temp_dir" && \
             curl -OL https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/FiraCode.zip && \
             mkdir -p ~/.local/share/fonts && \
             unzip FiraCode.zip -d ~/.local/share/fonts/ && \
-            fc-cache -f -v
+            if command_exists fc-cache; then
+                fc-cache -f -v
+            else
+                echo -e "${YELLOW}${INFO} Warning: fc-cache not available. Font cache not updated.${NC}"
+            fi
         ) &
         spinner $! "Installing Nerd fonts..."
         rm -rf "$temp_dir"
@@ -720,6 +755,19 @@ install_traefik() {
     echo -e "\n${BLUE}${GEAR} Installing Traefik...${NC}"
     log_message "Starting Traefik installation"
 
+    # Get domain name if not set
+    if [ -z "${DOMAIN_NAME}" ]; then
+        echo -e "\n${YELLOW}${INFO} Please enter your domain name (e.g., example.com):${NC}"
+        read -r DOMAIN_NAME
+        export DOMAIN_NAME
+        if [ -z "${DOMAIN_NAME}" ]; then
+            echo -e "${RED}${CROSS_MARK} Domain name is required${NC}"
+            log_message "Error: Domain name not provided"
+            return 1
+        fi
+        log_message "Domain name set to: ${DOMAIN_NAME}"
+    fi
+
     # Check if Traefik configuration script exists
     if [ ! -f "$TRAEFIK_DIR/traefik_config.sh" ]; then
         echo -e "${RED}${CROSS_MARK} Traefik configuration script not found${NC}"
@@ -730,6 +778,10 @@ install_traefik() {
     # Make the script executable
     chmod +x "$TRAEFIK_DIR/traefik_config.sh"
 
+    # Export required variables
+    export DOMAIN_NAME
+    export NETWORK_NAME
+
     # Run Traefik configuration script
     if ! "$TRAEFIK_DIR/traefik_config.sh"; then
         echo -e "${RED}${CROSS_MARK} Traefik configuration failed${NC}"
@@ -739,6 +791,46 @@ install_traefik() {
 
     echo -e "${GREEN}${CHECK_MARK} Traefik installation completed successfully${NC}"
     log_message "Traefik installation completed successfully"
+    return 0
+}
+
+# Function to configure domain
+configure_domain() {
+    echo -e "\n${BLUE}${GLOBE} Domain Configuration${NC}"
+    
+    # Get domain name with validation
+    echo -e "${BLUE}${INFO} Enter your domain name (e.g., example.com):${NC}"
+    read -r domain_input
+    DOMAIN_NAME=${domain_input}
+    
+    # Validate domain name
+    if [[ ! $DOMAIN_NAME =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+        echo -e "${RED}${CROSS_MARK} Invalid domain name format${NC}"
+        return 1
+    fi
+    
+    # Export for other scripts
+    export DOMAIN_NAME
+    
+    # Update all .env files with the domain name
+    for env_file in "$BASE_DIR"/*/*.env; do
+        if [ -f "$env_file" ]; then
+            # Check if DOMAIN_NAME already exists in the file
+            if grep -q "^DOMAIN_NAME=" "$env_file"; then
+                # Update existing DOMAIN_NAME
+                sed -i "s|^DOMAIN_NAME=.*|DOMAIN_NAME=$DOMAIN_NAME|" "$env_file"
+            else
+                # Add DOMAIN_NAME if it doesn't exist
+                echo "DOMAIN_NAME=$DOMAIN_NAME" >> "$env_file"
+            fi
+            echo -e "${GREEN}${CHECK_MARK} Updated domain in: ${env_file}${NC}"
+        fi
+    done
+    
+    # Log the configuration
+    log_message "Domain name set to: $DOMAIN_NAME"
+    echo -e "${GREEN}${CHECK_MARK} Domain name set to: ${DOMAIN_NAME}${NC}"
+    
     return 0
 }
 
@@ -764,6 +856,15 @@ main() {
     detect_linux_distribution
     log_message "Selected distribution: $DISTRO"
     pause_phase 2 "Distribution configured"
+
+    # Domain Configuration
+    configure_domain
+    if [ $? -eq 0 ]; then
+        pause_phase 2 "Domain configured"
+    else
+        echo -e "${RED}${CROSS_MARK} Domain configuration failed${NC}"
+        exit 1
+    fi
 
     # Phase 2: Prerequisites
     echo -e "\n${BLUE}${GEAR} Phase 2: Prerequisites Check${NC}"
