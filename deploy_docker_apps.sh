@@ -520,7 +520,7 @@ pause_phase() {
 check_fonts() {
     local font_name=$1
     if command -v fc-list >/dev/null 2>&1; then
-        if ! fc-list | grep -i "$font_name" >/dev/null; then
+        if ! fc-list | grep -i "FiraCode" >/dev/null; then
             return 1
         fi
         return 0
@@ -539,8 +539,8 @@ check_fonts() {
 
 # Function to install Nord fonts
 install_nord_fonts() {
-    if ! check_fonts "Nord"; then
-        echo -e "${YELLOW}${INFO} Nord fonts not found. Installing...${NC}"
+    if ! check_fonts "FiraCode"; then
+        echo -e "${YELLOW}${INFO} Nerd fonts not found. Installing...${NC}"
         # Install unzip if not present
         if ! command_exists unzip; then
             echo -e "${YELLOW}${INFO} Installing unzip...${NC}"
@@ -577,17 +577,18 @@ install_nord_fonts() {
         local temp_dir=$(mktemp -d)
         (
             cd "$temp_dir" && \
-            curl -OL https://github.com/arcticicestudio/nord-font/releases/latest/download/nord-font.zip && \
-            unzip nord-font.zip -d ~/.local/share/fonts/ && \
+            curl -OL https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/FiraCode.zip && \
+            mkdir -p ~/.local/share/fonts && \
+            unzip FiraCode.zip -d ~/.local/share/fonts/ && \
             fc-cache -f -v
         ) &
-        spinner $! "Installing Nord fonts..."
+        spinner $! "Installing Nerd fonts..."
         rm -rf "$temp_dir"
-        echo -e "\n${GREEN}${CHECK_MARK} Nord fonts installed successfully${NC}"
+        echo -e "\n${GREEN}${CHECK_MARK} Nerd fonts installed successfully${NC}"
         # Initialize icons after successful installation
         initialize_icons
     else
-        echo -e "${GREEN}${CHECK_MARK} Nord fonts already installed${NC}"
+        echo -e "${GREEN}${CHECK_MARK} Nerd fonts already installed${NC}"
         # Initialize icons if fonts are already installed
         initialize_icons
     fi
@@ -712,6 +713,33 @@ initialize_icons() {
     ARCH_ICON=""     # Arch Linux logo
 
     log_message "Icons initialized with Nord Font"
+}
+
+# Function to install and configure Traefik
+install_traefik() {
+    echo -e "\n${BLUE}${GEAR} Installing Traefik...${NC}"
+    log_message "Starting Traefik installation"
+
+    # Check if Traefik configuration script exists
+    if [ ! -f "$TRAEFIK_DIR/traefik_config.sh" ]; then
+        echo -e "${RED}${CROSS_MARK} Traefik configuration script not found${NC}"
+        log_message "Error: Traefik configuration script not found"
+        return 1
+    fi
+
+    # Make the script executable
+    chmod +x "$TRAEFIK_DIR/traefik_config.sh"
+
+    # Run Traefik configuration script
+    if ! "$TRAEFIK_DIR/traefik_config.sh"; then
+        echo -e "${RED}${CROSS_MARK} Traefik configuration failed${NC}"
+        log_message "Error: Traefik configuration failed"
+        return 1
+    fi
+
+    echo -e "${GREEN}${CHECK_MARK} Traefik installation completed successfully${NC}"
+    log_message "Traefik installation completed successfully"
+    return 0
 }
 
 # Main function with corrected order
