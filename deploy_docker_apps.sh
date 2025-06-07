@@ -418,6 +418,78 @@ install_cloudflare() {
     fi
 }
 
+# Function to ask user for application selection
+ask_user() {
+    echo -e "\n${BLUE}${SETTINGS} Select applications to install:${NC}"
+    echo -e "1) ${GEAR} Traefik"
+    echo -e "2) ${SERVER} Nginx"
+    echo -e "3) ${DOCKER} Portainer"
+    echo -e "4) ${SERVER} Nginx Proxy Manager"
+    echo -e "5) ${DATABASE} Odoo"
+    echo -e "6) ${DATABASE} Dolibarr"
+    echo -e "7) ${SHIELD} Cloudflare Tunnel"
+    echo -e "0) Install all"
+    echo -e "q) Quit"
+    
+    read -r -p "Enter your choices (space-separated numbers, 0 for all, q to quit): " choices
+    
+    case $choices in
+        q|Q) echo "Exiting..."; exit 0 ;;
+        0) APPS="1 2 3 4 5 6 7" ;;
+        *) APPS=$choices ;;
+    esac
+    
+    # Export for other functions
+    export APPS
+    
+    # Install selected applications
+    for APP in $APPS; do
+        case $APP in
+            1) install_traefik ;;
+            2) install_nginx ;;
+            3) install_portainer ;;
+            4) install_nginx_proxy_manager ;;
+            5) install_odoo ;;
+            6) install_dolibarr ;;
+            7) install_cloudflare ;;
+            *) echo -e "${YELLOW}${WARNING} Skipping invalid option: $APP${NC}" ;;
+        esac
+    done
+    
+    return 0
+}
+
+# Function to display service URLs
+display_urls() {
+    echo -e "\n${BLUE}${GLOBE} Service URLs:${NC}"
+    
+    for APP in $APPS; do
+        case $APP in
+            1)  # Traefik
+                echo -e "${GREEN}${GLOBE} Traefik Dashboard:${NC} http://localhost:8080"
+                ;;
+            2)  # Nginx
+                echo -e "${GREEN}${GLOBE} Nginx:${NC} http://localhost:80"
+                ;;
+            3)  # Portainer
+                echo -e "${GREEN}${GLOBE} Portainer:${NC} http://localhost:9000"
+                ;;
+            4)  # Nginx Proxy Manager
+                echo -e "${GREEN}${GLOBE} Nginx Proxy Manager:${NC} http://localhost:81"
+                ;;
+            5)  # Odoo
+                echo -e "${GREEN}${GLOBE} Odoo:${NC} http://localhost:8069"
+                ;;
+            6)  # Dolibarr
+                echo -e "${GREEN}${GLOBE} Dolibarr:${NC} http://localhost:8080"
+                ;;
+            7)  # Cloudflare
+                echo -e "${GREEN}${GLOBE} Cloudflare Tunnel:${NC} Check Cloudflare Zero Trust Dashboard"
+                ;;
+        esac
+    done
+}
+
 # Function to show a spinner
 spinner() {
     local pid=$1
@@ -478,9 +550,22 @@ install_nord_fonts() {
                 sudo dnf install -y unzip
             elif [[ $DISTRO == "arch" ]]; then
                 sudo pacman -S --noconfirm unzip
+            elif [[ $DISTRO == "opensuse"* ]]; then
+                sudo zypper install -y unzip
             else
-                echo -e "${RED}${CROSS_MARK} Could not install unzip - unsupported distribution${NC}"
-                return 1
+                echo -e "${YELLOW}${INFO} Attempting to install unzip using available package manager...${NC}"
+                if command -v apt-get &>/dev/null; then
+                    sudo apt-get update && sudo apt-get install -y unzip
+                elif command -v dnf &>/dev/null; then
+                    sudo dnf install -y unzip
+                elif command -v yum &>/dev/null; then
+                    sudo yum install -y unzip
+                elif command -v zypper &>/dev/null; then
+                    sudo zypper install -y unzip
+                else
+                    echo -e "${RED}${CROSS_MARK} Could not install unzip - no supported package manager found${NC}"
+                    return 1
+                fi
             fi
             
             if ! command_exists unzip; then
