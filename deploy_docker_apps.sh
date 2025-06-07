@@ -297,14 +297,13 @@ install_nginx_proxy_manager() {
     fi
 }
 
-# Source Odoo configuration function
-source "$ODOO_DIR/odoo_config.sh"
-
 # Install Odoo with progress
 install_odoo() {
     echo -e "\n${BLUE}${GEAR} Setting up Odoo...${NC}"
     if ! docker container inspect odoo >/dev/null 2>&1; then
         echo -e "${BLUE}${INFO} Setting up Odoo configuration...${NC}"
+        # Source Odoo configuration only when needed
+        source "$ODOO_DIR/odoo_config.sh"
         get_odoo_config "$ODOO_DIR"
         (docker-compose -f $ODOO_DIR/docker-compose-odoo.yml up -d) &
         spinner $! "Deploying Odoo container..."
