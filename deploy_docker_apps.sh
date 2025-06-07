@@ -136,6 +136,36 @@ detect_linux_distribution() {
   echo "$(date): Selected distribution: $DISTRO" >> "$BASE_DIR/install_log.txt"
 }
 
+# Function to check Docker installation
+check_docker_installation() {
+    echo -e "\n${BLUE}${GEAR} Checking Docker installation...${NC}"
+    if ! command_exists docker; then
+        echo -e "${YELLOW}${INFO} Docker not found. Installing...${NC}"
+        install_docker
+        return $?
+    else
+        DOCKER_VERSION=$(docker --version)
+        echo -e "${GREEN}${CHECK_MARK} Docker is already installed: ${DOCKER_VERSION}${NC}"
+        # Make sure Docker daemon is running
+        if ! docker info >/dev/null 2>&1; then
+            echo -e "${YELLOW}${INFO} Docker daemon not running. Starting...${NC}"
+            if [[ $DISTRO == "ubuntu" || $DISTRO == "debian" || $DISTRO == "centos" || $DISTRO == "rhel" || $DISTRO == "fedora" || $DISTRO == "arch" ]]; then
+                sudo systemctl start docker
+                if [ $? -eq 0 ]; then
+                    echo -e "${GREEN}${CHECK_MARK} Docker daemon started${NC}"
+                else
+                    echo -e "${RED}${CROSS_MARK} Failed to start Docker daemon${NC}"
+                    return 1
+                fi
+            else
+                echo -e "${RED}${CROSS_MARK} Unsupported distribution for automatic Docker daemon start${NC}"
+                return 1
+            fi
+        fi
+        return 0
+    fi
+}
+
 # Function to install Docker and Docker Compose based on the detected distribution
 install_docker() {
   if ! command_exists docker; then
@@ -415,6 +445,18 @@ check_fonts() {
 install_nord_fonts() {
     if ! check_fonts "Nord"; then
         echo -e "${YELLOW}${INFO} Nord fonts not found. Installing...${NC}"
+        # Install unzip if not present
+        if ! command_exists unzip; then
+            echo -e "${YELLOW}${INFO} Installing unzip...${NC}"
+            if [[ $DISTRO == "ubuntu" || $DISTRO == "debian" ]]; then
+                sudo apt-get update && sudo apt-get install -y unzip
+            elif [[ $DISTRO == "centos" || $DISTRO == "rhel" || $DISTRO == "fedora" ]]; then
+                sudo dnf install -y unzip
+            elif [[ $DISTRO == "arch" ]]; then
+                sudo pacman -S --noconfirm unzip
+            fi
+        fi
+        
         local temp_dir=$(mktemp -d)
         (
             cd "$temp_dir" && \
